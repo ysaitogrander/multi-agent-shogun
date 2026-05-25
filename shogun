@@ -1,0 +1,887 @@
+#!/usr/bin/env bash
+# =============================================================================
+# shogun - multi-agent-shogun グローバルCLI v4
+# =============================================================================
+# 使い方:
+#   shogun start              チームを起動
+#   shogun attach             将軍に接続
+#   shogun agents             家老・足軽・軍師セッションに接続
+#   shogun agents pane <N>    特定ペインに直接接続（N=0:家老, 1-7:足軽, 8:軍師）
+#   shogun status             状態確認
+#   shogun recover            詰まり・フリーズのリカバリー
+#   shogun recover queue      キューのみリセット
+#   shogun recover karo       家老だけ再起動
+#   shogun recover gunshi     軍師だけ再起動
+#   shogun recover ashigaru <N>  足軽N番だけ再起動
+#   shogun recover all        全員再起動（セッションは維持）
+#   shogun stop               チーム全停止
+#   shogun init               .shogun/ 初期化
+# =============================================================================
+
+set -euo pipefail
+
+# ── 設定 ─────────────────────────────────────────────────────────────────────
+SHOGUN_HOME="${SHOGUN_HOME:-/Users/yukihirosaito/Documents/line_raffle/multi-agent-shogun}"
+SHOGUN_LOCAL_DIR=".shogun"
+ASHIGARU_COUNT=7
+GUNSHI_PANE=8
+
+_project_name() {
+  basename "$(pwd)" | tr ' ' '_' | tr '[:upper:]' '[:lower:]'
+}
+
+PROJ=$(_project_name)
+SESSION_SHOGUN="shogun_${PROJ}"
+SESSION_AGENTS="multiagent_${PROJ}"
+
+# ── カラー出力 ────────────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+
+info()    { echo -e "${BLUE}[shogun]${NC} $*"; }
+success() { echo -e "${GREEN}[shogun]${NC} $*"; }
+warn()    { echo -e "${YELLOW}[shogun]${NC} $*"; }
+error()   { echo -e "${RED}[shogun]${NC} $*" >&2; exit 1; }
+
+# ── 前提チェック ──────────────────────────────────────────────────────────────
+_check_prereqs() {
+  [[ -d "$SHOGUN_HOME" ]] || error "SHOGUN_HOMEが見つかりません: $SHOGUN_HOME"
+  command -v tmux   &>/dev/null || error "tmuxがインストールされていません: brew install tmux"
+  command -v claude &>/dev/null || error "Claude Code CLIが見つかりません: npm install -g @anthropic-ai/claude-code"
+}
+
+# ── ディレクトリ信頼登録（trust dialog スキップ）─────────────────────────────
+# Claude Code は未知のディレクトリで起動すると trust dialog を出す。
+# ~/.claude.json の projects に hasTrustDialogAccepted: true を設定して回避。
+_ensure_trust_directory() {
+  local dir="$1"
+  local claude_json="$HOME/.claude.json"
+  [[ -f "$claude_json" ]] || return 0
+
+  python3 -c "
+import json, sys
+path = '$dir'
+cfg_path = '$claude_json'
+with open(cfg_path) as f:
+    data = json.load(f)
+projects = data.setdefault('projects', {})
+proj = projects.setdefault(path, {})
+if proj.get('hasTrustDialogAccepted'):
+    sys.exit(0)
+proj['hasTrustDialogAccepted'] = True
+with open(cfg_path, 'w') as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+" 2>/dev/null || true
+}
+
+# ── scripts/ と lib/ セットアップ ─────────────────────────────────────────────
+# inbox_write.sh はSCRIPT_DIRをスクリプト自身の場所から計算するため
+# シンボリックリンクだとSHOGUN_HOMEのqueue/を向いてしまう。
+# → scripts/はコピーしてinbox_write.shだけラッパーで差し替える。
+_setup_scripts() {
+  local project_dir="$1" local_dir="$2"
+  local scripts_src="${SHOGUN_HOME}/scripts"
+  local scripts_dst="${project_dir}/scripts"
+  local lib_src="${SHOGUN_HOME}/lib"
+  local lib_dst="${project_dir}/lib"
+
+  if [[ ! -d "$scripts_src" ]]; then
+    warn "SHOGUN_HOME/scripts が見つかりません: $scripts_src"
+    return
+  fi
+
+  # 既存のシンボリックリンクは一度外してコピーに変換
+  if [[ -L "$scripts_dst" ]]; then
+    rm -f "$scripts_dst"
+  fi
+  if [[ -L "$lib_dst" ]]; then
+    rm -f "$lib_dst"
+  fi
+
+  # scripts/ が未作成ならコピー、既存なら更新
+  if [[ ! -d "$scripts_dst" ]]; then
+    cp -r "$scripts_src" "$scripts_dst"
+    info "scripts/ をコピーしました: $scripts_dst"
+  else
+    # 既存ファイルを更新（inbox_write.shは後でラッパーで上書きされる）
+    cp -r "$scripts_src"/* "$scripts_dst"/ 2>/dev/null || true
+  fi
+
+  # lib/ をコピー（watcher_supervisor.sh が agent_registry.sh を必要とする）
+  if [[ -d "$lib_src" ]]; then
+    if [[ ! -d "$lib_dst" ]]; then
+      cp -r "$lib_src" "$lib_dst"
+      info "lib/ をコピーしました: $lib_dst"
+    else
+      cp -r "$lib_src"/* "$lib_dst"/ 2>/dev/null || true
+    fi
+  fi
+
+  # inbox_write.sh をプロジェクトlocal_dir対応ラッパーで上書き
+  _write_inbox_wrapper "$scripts_dst" "$local_dir"
+
+  # .gitignore
+  local gitignore="${project_dir}/.gitignore"
+  if [[ -f "$gitignore" ]]; then
+    grep -q "^scripts$" "$gitignore" 2>/dev/null || printf '\n# shogun scripts\nscripts\n' >> "$gitignore"
+    grep -q "^lib$" "$gitignore" 2>/dev/null || printf 'lib\n' >> "$gitignore"
+  fi
+
+  info "scripts/inbox_write.sh をプロジェクト対応版に設定しました"
+}
+
+_write_inbox_wrapper() {
+  local scripts_dst="$1" local_dir="$2"
+
+  cat > "${scripts_dst}/inbox_write.sh" << 'WRAPPER_HEADER'
+#!/usr/bin/env bash
+# inbox_write.sh — shogunグローバルCLI用ラッパー（自動生成）
+# INBOXをlocal_dir/.shogun/queue/inbox/に固定する
+set -e
+WRAPPER_HEADER
+
+  # local_dirを実際の値で埋め込む
+  echo "SHOGUN_LOCAL_DIR=\"${local_dir}\"" >> "${scripts_dst}/inbox_write.sh"
+  # tmuxセッション名も埋め込む
+  echo "SHOGUN_AGENTS_SESSION=\"${SESSION_AGENTS}\"" >> "${scripts_dst}/inbox_write.sh"
+
+  cat >> "${scripts_dst}/inbox_write.sh" << 'WRAPPER_BODY'
+
+TARGET="$1"
+CONTENT="$2"
+TYPE="${3:-wake_up}"
+FROM="${4:-unknown}"
+
+INBOX="${SHOGUN_LOCAL_DIR}/queue/inbox/${TARGET}.yaml"
+LOCKFILE="${INBOX}.lock"
+
+[ -z "$TARGET" ] || [ -z "$CONTENT" ] && {
+  echo "Usage: inbox_write.sh <target_agent> <content> [type] [from]" >&2; exit 1
+}
+
+# Self-send guard
+[ "$FROM" = "$TARGET" ] && {
+  echo "[inbox_write] REJECTED: self-send detected (from=$FROM, target=$TARGET)" >&2; exit 1
+}
+
+[ -f "$INBOX" ] || { mkdir -p "$(dirname "$INBOX")"; echo "messages: []" > "$INBOX"; }
+
+MSG_ID="msg_$(date +%Y%m%d_%H%M%S)_$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
+TIMESTAMP=$(date "+%Y-%m-%dT%H:%M:%S")
+LOCK_DIR="${LOCKFILE}.d"
+
+_acquire_lock() {
+  local i=0
+  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    sleep 0.1; i=$((i+1)); [ $i -ge 50 ] && return 1
+  done
+  if command -v flock &>/dev/null; then
+    exec 200>"$LOCKFILE"
+    flock -w 5 200 || { rmdir "$LOCK_DIR" 2>/dev/null; return 1; }
+  fi
+}
+_release_lock() {
+  if command -v flock &>/dev/null; then exec 200>&-; fi
+  rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+
+# YAMLに書いた後、対象エージェントのペインにnudgeを送る
+_nudge_agent() {
+  local agent="$1" pane_num=""
+  case "$agent" in
+    karo)      pane_num=0 ;;
+    ashigaru1) pane_num=1 ;;
+    ashigaru2) pane_num=2 ;;
+    ashigaru3) pane_num=3 ;;
+    ashigaru4) pane_num=4 ;;
+    ashigaru5) pane_num=5 ;;
+    ashigaru6) pane_num=6 ;;
+    ashigaru7) pane_num=7 ;;
+    gunshi)    pane_num=8 ;;
+  esac
+  [ -z "$pane_num" ] && return 0
+
+  # Count unread messages for nudge
+  local unread_count
+  unread_count=$(python3 -c "
+import yaml, sys
+try:
+    with open('$INBOX') as f:
+        data = yaml.safe_load(f) or {}
+    msgs = data.get('messages', [])
+    print(sum(1 for m in msgs if not m.get('read', False)))
+except:
+    print(1)
+" 2>/dev/null || echo "1")
+
+  local tmux_target="${SHOGUN_AGENTS_SESSION}:0.${pane_num}"
+  sleep 0.3
+  tmux send-keys -t "$tmux_target" "inbox${unread_count}" 2>/dev/null || true
+  sleep 0.3
+  tmux send-keys -t "$tmux_target" Enter 2>/dev/null || true
+}
+
+attempt=0
+while [ $attempt -lt 3 ]; do
+  if _acquire_lock; then
+    python3 << PYEOF
+import yaml, sys, tempfile, os
+inbox = "$INBOX"
+try:
+    with open(inbox) as f:
+        data = yaml.safe_load(f) or {}
+    if not data.get('messages'):
+        data['messages'] = []
+    data['messages'].append({
+        'id': '$MSG_ID',
+        'from': '$FROM',
+        'timestamp': '$TIMESTAMP',
+        'type': '$TYPE',
+        'content': """$CONTENT""",
+        'read': False
+    })
+    if len(data['messages']) > 50:
+        msgs = data['messages']
+        unread = [m for m in msgs if not m.get('read', False)]
+        read   = [m for m in msgs if m.get('read', False)]
+        data['messages'] = unread + read[-30:]
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(inbox), suffix='.tmp')
+    with os.fdopen(tmp_fd, 'w') as f:
+        yaml.dump(data, f, default_flow_style=False, allow_unicode=True, indent=2)
+    os.replace(tmp_path, inbox)
+except Exception as e:
+    print(f'ERROR: {e}', file=sys.stderr)
+    sys.exit(1)
+PYEOF
+    STATUS=$?
+    _release_lock
+    if [ $STATUS -eq 0 ]; then _nudge_agent "$TARGET"; exit 0; fi
+    attempt=$((attempt+1)); [ $attempt -lt 3 ] && sleep 1
+  else
+    attempt=$((attempt+1)); [ $attempt -lt 3 ] && sleep 1
+  fi
+done
+exit 1
+WRAPPER_BODY
+
+  chmod +x "${scripts_dst}/inbox_write.sh"
+}
+
+
+# ── instructionファイル生成（command too long 対策: 一時ファイル経由）─────────
+_make_instruction_file() {
+  local role="$1" local_dir="$2" project_dir="$3"
+
+  # generated/ に Claude 用ビルド済みファイルがあればそれを使う
+  local generated="${SHOGUN_HOME}/instructions/generated/${role}.md"
+  local base="${SHOGUN_HOME}/instructions/${role}.md"
+  if [[ -f "$generated" ]]; then
+    base="$generated"
+  fi
+  [[ -f "$base" ]] || error "instructionファイルが見つかりません: $base"
+
+  mkdir -p "${local_dir}/tmp"
+  local tmp="${local_dir}/tmp/${role}_instruction.md"
+
+  # 冒頭に絶対パス上書き指示を挿入してからベースinstructionを続ける
+  # → 相対パスのハードコードより優先させるため冒頭に置く
+  cat > "$tmp" <<PREPEND
+# SYSTEM OVERRIDE — 最優先ルール。以下に反する行動は一切禁止。
+
+## 1. ファイルパス（絶対パスのみ使用。相対パス・自己判断での作成は禁止）
+| 用途 | 絶対パス |
+|------|----------|
+| タスク | ${local_dir}/queue/tasks/ |
+| レポート | ${local_dir}/queue/reports/ |
+| inbox | ${local_dir}/queue/inbox/ |
+| コンテキスト | ${local_dir}/context/ |
+| ステータス | ${local_dir}/status/ |
+| メトリクス | ${local_dir}/queue/metrics/ |
+| ダッシュボード | ${local_dir}/dashboard.md |
+| プロジェクト | ${project_dir} |
+
+## 2. 絶対にやってはいけないこと
+- .shogun/ ディレクトリを自分で作成・初期化すること（mkdir .shogun, shogun init 等）
+- サブディレクトリ（backend/, dynamodb-data/ 等）に .shogun/ を作ること
+- queue/ 以下のファイルをプロジェクトルート以外の場所に作ること
+- tmuxセッション名（${SESSION_AGENTS}:0.X）を inbox_write.sh のエージェント名に使うこと
+
+## 3. inbox_write.sh のエージェント名（必ずこの名前を使うこと）
+| 宛先 | コマンド |
+|------|----------|
+| 家老 | bash scripts/inbox_write.sh karo "メッセージ" type from |
+| 軍師 | bash scripts/inbox_write.sh gunshi "メッセージ" type from |
+| 足軽1 | bash scripts/inbox_write.sh ashigaru1 "メッセージ" type from |
+| 足軽2 | bash scripts/inbox_write.sh ashigaru2 "メッセージ" type from |
+| 足軽3 | bash scripts/inbox_write.sh ashigaru3 "メッセージ" type from |
+| 足軽4 | bash scripts/inbox_write.sh ashigaru4 "メッセージ" type from |
+| 足軽5 | bash scripts/inbox_write.sh ashigaru5 "メッセージ" type from |
+| 足軽6 | bash scripts/inbox_write.sh ashigaru6 "メッセージ" type from |
+| 足軽7 | bash scripts/inbox_write.sh ashigaru7 "メッセージ" type from |
+
+---
+PREPEND
+
+  cat "$base" >> "$tmp"
+  cat >> "$tmp" <<APPEND
+
+---
+## tmuxセッション情報（send-keys用・inbox_write.shのエージェント名ではない）
+APPEND
+
+  case "$role" in
+    shogun)
+      printf -- '- 家老ペイン: tmux send-keys -t %s:0.0\n- 足軽ペイン: tmux send-keys -t %s:0.1〜0.7\n- 軍師ペイン: tmux send-keys -t %s:0.8\n' \
+        "$SESSION_AGENTS" "$SESSION_AGENTS" "$SESSION_AGENTS" >> "$tmp" ;;
+    karo)
+      printf -- '- 将軍ペイン: tmux send-keys -t %s\n- 足軽ペイン: tmux send-keys -t %s:0.1〜0.7\n- 軍師ペイン: tmux send-keys -t %s:0.8\n' \
+        "$SESSION_SHOGUN" "$SESSION_AGENTS" "$SESSION_AGENTS" >> "$tmp" ;;
+    gunshi)
+      printf -- '- 家老ペイン: tmux send-keys -t %s:0.0\n- 足軽ペイン: tmux send-keys -t %s:0.1〜0.7\n' \
+        "$SESSION_AGENTS" "$SESSION_AGENTS" >> "$tmp" ;;
+    ashigaru)
+      printf -- '- 家老ペイン: tmux send-keys -t %s:0.0\n- 軍師ペイン: tmux send-keys -t %s:0.8\n' \
+        "$SESSION_AGENTS" "$SESSION_AGENTS" >> "$tmp" ;;
+  esac
+
+  echo "$tmp"
+}
+
+# ── ペイン上でClaudeを再起動するヘルパー ─────────────────────────────────────
+# 引数: target(tmuxターゲット), instruction_tmp_path, project_dir
+_restart_claude_in_pane() {
+  local target="$1" inst_file="$2" project_dir="$3"
+
+  # Ctrl+C で実行中のClaudeを止める（C-c が正しいtmux記法）
+  tmux send-keys -t "$target" C-c 2>/dev/null || true
+  sleep 0.4
+  tmux send-keys -t "$target" C-c 2>/dev/null || true
+  sleep 0.4
+  # qで確認プロンプトがあれば抜ける
+  tmux send-keys -t "$target" "q" Enter 2>/dev/null || true
+  sleep 0.3
+  # cdして再起動
+  tmux send-keys -t "$target" "cd '${project_dir}'" Enter
+  sleep 0.2
+  tmux send-keys -t "$target" \
+    "claude --dangerously-skip-permissions --system-prompt \"\$(cat '${inst_file}')\"" Enter
+}
+
+# ── init ──────────────────────────────────────────────────────────────────────
+cmd_init() {
+  local project_dir; project_dir="$(pwd)"
+  local local_dir="${project_dir}/${SHOGUN_LOCAL_DIR}"
+
+  # ── 安全チェック: SHOGUN_HOME自体やその子孫には作らない ──
+  if [[ "$project_dir" == "$SHOGUN_HOME" ]] || \
+     [[ "$project_dir" == "$SHOGUN_HOME"/* ]]; then
+    error ".shogun/ をSHOGUN_HOME内に作成しようとしています。
+  SHOGUN_HOME: $SHOGUN_HOME
+  カレント:    $project_dir
+  意図したプロジェクトディレクトリで実行してください。"
+  fi
+
+  # SHOGUN_HOMEの親ディレクトリ（例: ~/Documents/）への作成も防ぐ
+  if [[ "$SHOGUN_HOME" == "$project_dir"/* ]]; then
+    warn "SHOGUN_HOMEの親ディレクトリで実行されています: $project_dir"
+    warn "本当にここで .shogun/ を作成しますか？ (y/N)"
+    read -r answer
+    [[ "$answer" =~ ^[Yy]$ ]] || { info "キャンセルしました"; exit 0; }
+  fi
+
+  if [[ -d "$local_dir" ]]; then
+    warn ".shogun/ は既に存在します: $local_dir"; return
+  fi
+
+  info "プロジェクト '${PROJ}' に .shogun/ を初期化中..."
+  mkdir -p "${local_dir}/queue/tasks" "${local_dir}/queue/reports" \
+           "${local_dir}/queue/inbox" "${local_dir}/queue/metrics" \
+           "${local_dir}/queue/archive" \
+           "${local_dir}/context" "${local_dir}/status" \
+           "${local_dir}/memory" "${local_dir}/tmp" \
+           "${local_dir}/logs"
+
+  cat > "${local_dir}/queue/shogun_to_karo.yaml" <<'YAML'
+status: idle
+tasks: []
+YAML
+
+  # pending.yaml（家老が管理する保留キュー）
+  cat > "${local_dir}/queue/tasks/pending.yaml" <<'YAML'
+tasks: []
+YAML
+
+  cat > "${local_dir}/status/workers.yaml" <<YAML
+workers:
+$(for i in $(seq 1 "$ASHIGARU_COUNT"); do echo "  ashigaru_${i}: idle"; done)
+  gunshi: idle
+YAML
+
+  # 各エージェントのinboxを初期化
+  for agent in karo gunshi $(for i in $(seq 1 "$ASHIGARU_COUNT"); do echo "ashigaru${i}"; done); do
+    echo "messages: []" > "${local_dir}/queue/inbox/${agent}.yaml"
+  done
+
+  cat > "${local_dir}/dashboard.md" <<MARKDOWN
+# Shogun Dashboard - ${PROJ}
+
+**Project:** $(pwd)
+**Started:** $(date)
+
+## In Progress
+| Worker | Task | Status |
+|--------|------|--------|
+| - | - | - |
+
+## Completed
+| Worker | Task | Result |
+|--------|------|--------|
+
+## Skill Candidates
+_None yet_
+MARKDOWN
+
+  # scripts/ と lib/ をセットアップ
+  _setup_scripts "${project_dir}" "${local_dir}"
+
+  local gitignore="${project_dir}/.gitignore"
+  if [[ -f "$gitignore" ]]; then
+    grep -q "^\.shogun/" "$gitignore" 2>/dev/null || \
+      printf '\n# shogun multi-agent system\n.shogun/\n' >> "$gitignore" && \
+      info ".gitignore に .shogun/ を追加しました"
+    grep -q "^scripts$" "$gitignore" 2>/dev/null || printf 'scripts\n' >> "$gitignore"
+    grep -q "^lib$" "$gitignore" 2>/dev/null || printf 'lib\n' >> "$gitignore"
+  fi
+
+  success ".shogun/ を作成しました: $local_dir"
+}
+
+# ── start ─────────────────────────────────────────────────────────────────────
+cmd_start() {
+  _check_prereqs
+  local project_dir; project_dir="$(pwd)"
+  local local_dir="${project_dir}/${SHOGUN_LOCAL_DIR}"
+
+  [[ -d "$local_dir" ]] || cmd_init
+
+  if tmux has-session -t "$SESSION_SHOGUN" 2>/dev/null; then
+    warn "セッション '${SESSION_SHOGUN}' は既に実行中です"
+    warn "  接続: shogun attach  /  停止: shogun stop  /  復旧: shogun recover"
+    return
+  fi
+
+  echo ""
+  echo -e "${BOLD}${CYAN}⚔️  Shogun Multi-Agent System v4${NC}"
+  echo -e "${CYAN}   Project: ${BOLD}${PROJ}${NC} / Dir: ${project_dir}${NC}"
+  echo -e "${CYAN}   Formation: 将軍1 + 家老1 + 足軽${ASHIGARU_COUNT} + 軍師1${NC}"
+  echo ""
+
+  # scripts/ と lib/ をセットアップ
+  _setup_scripts "${project_dir}" "${local_dir}"
+
+  # trust dialog をスキップするためディレクトリを信頼済み登録
+  _ensure_trust_directory "$project_dir"
+
+  info "instructionファイルを準備中..."
+  local shogun_tmp karo_tmp ashigaru_tmp gunshi_tmp
+  shogun_tmp=$(_make_instruction_file "shogun"    "$local_dir" "$project_dir")
+  karo_tmp=$(_make_instruction_file   "karo"      "$local_dir" "$project_dir")
+  ashigaru_tmp=$(_make_instruction_file "ashigaru" "$local_dir" "$project_dir")
+  gunshi_tmp=$(_make_instruction_file "gunshi"     "$local_dir" "$project_dir")
+
+  # 将軍セッション
+  info "将軍セッションを作成中..."
+  tmux new-session -d -s "$SESSION_SHOGUN" -x 220 -y 50
+  tmux set-option -p -t "${SESSION_SHOGUN}:0.0" @agent_id shogun
+  tmux set-option -p -t "${SESSION_SHOGUN}:0.0" @agent_cli claude
+  tmux send-keys -t "$SESSION_SHOGUN" "cd '${project_dir}' && clear" Enter
+  tmux send-keys -t "$SESSION_SHOGUN" \
+    "claude --dangerously-skip-permissions --system-prompt \"\$(cat '${shogun_tmp}')\"" Enter
+
+  # 家老・足軽・軍師セッション（ASHIGARU_COUNT + 2 ペイン = 9: 0=家老, 1-7=足軽, 8=軍師）
+  local total_panes=$((ASHIGARU_COUNT + 1))  # +1 for gunshi (karo is pane 0 = initial)
+  info "家老・足軽・軍師セッションを作成中... (${total_panes}追加ペイン)"
+  tmux new-session -d -s "$SESSION_AGENTS" -x 220 -y 50
+  for _ in $(seq 1 "$total_panes"); do
+    tmux split-window -t "$SESSION_AGENTS" 2>/dev/null || true
+    tmux select-layout -t "$SESSION_AGENTS" tiled
+  done
+
+  # tmuxペインにagent_idを設定（session_start_hook.shが使用）
+  tmux set-option -p -t "${SESSION_AGENTS}:0.0" @agent_id karo
+  tmux set-option -p -t "${SESSION_AGENTS}:0.0" @agent_cli claude
+
+  info "家老を起動中..."
+  tmux send-keys -t "${SESSION_AGENTS}:0.0" "cd '${project_dir}'" Enter
+  tmux send-keys -t "${SESSION_AGENTS}:0.0" \
+    "claude --dangerously-skip-permissions --system-prompt \"\$(cat '${karo_tmp}')\"" Enter
+
+  for i in $(seq 1 "$ASHIGARU_COUNT"); do
+    info "足軽 ${i} を起動中..."
+    tmux set-option -p -t "${SESSION_AGENTS}:0.${i}" @agent_id "ashigaru${i}"
+    tmux set-option -p -t "${SESSION_AGENTS}:0.${i}" @agent_cli claude
+    tmux send-keys -t "${SESSION_AGENTS}:0.${i}" "cd '${project_dir}'" Enter
+    sleep 0.3
+    tmux send-keys -t "${SESSION_AGENTS}:0.${i}" \
+      "claude --dangerously-skip-permissions --system-prompt \"\$(cat '${ashigaru_tmp}')\"" Enter
+    sleep 1.5
+  done
+
+  # 軍師（pane 8）
+  info "軍師を起動中..."
+  tmux set-option -p -t "${SESSION_AGENTS}:0.${GUNSHI_PANE}" @agent_id gunshi
+  tmux set-option -p -t "${SESSION_AGENTS}:0.${GUNSHI_PANE}" @agent_cli claude
+  tmux send-keys -t "${SESSION_AGENTS}:0.${GUNSHI_PANE}" "cd '${project_dir}'" Enter
+  sleep 0.3
+  tmux send-keys -t "${SESSION_AGENTS}:0.${GUNSHI_PANE}" \
+    "claude --dangerously-skip-permissions --system-prompt \"\$(cat '${gunshi_tmp}')\"" Enter
+
+  # inbox_watcher起動（全エージェント分: 将軍+家老+足軽N+軍師）
+  info "inbox_watcher を起動中..."
+  mkdir -p "${project_dir}/logs"
+  pkill -f "inbox_watcher.sh" 2>/dev/null || true
+  sleep 0.5
+  nohup bash "${project_dir}/scripts/inbox_watcher.sh" shogun \
+    "${SESSION_SHOGUN}:0.0" claude \
+    >> "${project_dir}/logs/inbox_watcher_shogun.log" 2>&1 &
+  disown 2>/dev/null || true
+  nohup bash "${project_dir}/scripts/inbox_watcher.sh" karo \
+    "${SESSION_AGENTS}:0.0" claude \
+    >> "${project_dir}/logs/inbox_watcher_karo.log" 2>&1 &
+  disown 2>/dev/null || true
+  for i in $(seq 1 "$ASHIGARU_COUNT"); do
+    nohup bash "${project_dir}/scripts/inbox_watcher.sh" "ashigaru${i}" \
+      "${SESSION_AGENTS}:0.${i}" claude \
+      >> "${project_dir}/logs/inbox_watcher_ashigaru${i}.log" 2>&1 &
+    disown 2>/dev/null || true
+  done
+  nohup bash "${project_dir}/scripts/inbox_watcher.sh" gunshi \
+    "${SESSION_AGENTS}:0.${GUNSHI_PANE}" claude \
+    >> "${project_dir}/logs/inbox_watcher_gunshi.log" 2>&1 &
+  disown 2>/dev/null || true
+  success "inbox_watcher を起動しました ($((ASHIGARU_COUNT + 3))プロセス)"
+
+  echo ""
+  success "⚔️  チームが起動しました！"
+  echo ""
+  echo -e "  ${GREEN}shogun attach${NC}          → 将軍に接続"
+  echo -e "  ${GREEN}shogun agents${NC}          → 家老・足軽・軍師を確認"
+  echo -e "  ${GREEN}shogun agents pane 0${NC}   → 家老に直接接続"
+  echo -e "  ${GREEN}shogun agents pane 8${NC}   → 軍師に直接接続"
+  echo -e "  ${GREEN}shogun status${NC}          → 状態確認"
+  echo -e "  ${GREEN}shogun stop${NC}            → 停止"
+  echo ""
+  echo -e "  ダッシュボード: ${CYAN}${local_dir}/dashboard.md${NC}"
+  echo ""
+}
+
+# ── attach（将軍）────────────────────────────────────────────────────────────
+cmd_attach() {
+  tmux has-session -t "$SESSION_SHOGUN" 2>/dev/null \
+    || error "将軍セッションが見つかりません。shogun start を先に実行してください"
+  info "将軍に接続します... (Ctrl+B → d で切断)"
+  tmux attach-session -t "$SESSION_SHOGUN"
+}
+
+# ── agents（家老・足軽・軍師）────────────────────────────────────────────────
+cmd_agents() {
+  local subcmd="${1:-}"
+
+  tmux has-session -t "$SESSION_AGENTS" 2>/dev/null \
+    || error "家老・足軽・軍師セッションが見つかりません。shogun start を先に実行してください"
+
+  case "$subcmd" in
+    pane)
+      local pane_num="${2:-}"
+      [[ -n "$pane_num" ]] || error "ペイン番号を指定してください: shogun agents pane <0-8>\n  0=家老  1-7=足軽  8=軍師"
+      [[ "$pane_num" =~ ^[0-8]$ ]] || error "ペイン番号は 0〜8 で指定してください"
+
+      local label
+      case "$pane_num" in
+        0) label="家老" ;;
+        8) label="軍師" ;;
+        *) label="足軽 ${pane_num}" ;;
+      esac
+      info "${label} (ペイン${pane_num}) に接続します... (Ctrl+B → d で切断)"
+      tmux attach-session -t "${SESSION_AGENTS}" \; select-pane -t "${SESSION_AGENTS}:0.${pane_num}"
+      ;;
+
+    "")
+      echo ""
+      echo -e "${BOLD}家老・足軽・軍師セッション${NC} (${SESSION_AGENTS})"
+      echo -e "  ペイン切り替え: ${CYAN}Ctrl+B → q${NC} でペイン番号表示"
+      echo -e "  割当: 0=家老, 1-7=足軽, 8=軍師"
+      echo -e "  切断:           ${CYAN}Ctrl+B → d${NC}"
+      echo -e "  特定ペイン直接: ${CYAN}shogun agents pane <N>${NC}"
+      echo ""
+      tmux attach-session -t "$SESSION_AGENTS"
+      ;;
+
+    *)
+      error "不明なサブコマンド: $subcmd\n  shogun agents\n  shogun agents pane <0-8>"
+      ;;
+  esac
+}
+
+# ── recover ───────────────────────────────────────────────────────────────────
+cmd_recover() {
+  local subcmd="${1:-}"
+  local project_dir; project_dir="$(pwd)"
+  local local_dir="${project_dir}/${SHOGUN_LOCAL_DIR}"
+
+  case "$subcmd" in
+
+    # ── キューリセット ────────────────────────────────────────────────────────
+    queue|"")
+      info "キューをリセット中..."
+
+      local archive_dir="${local_dir}/queue/archive/$(date +%Y%m%d_%H%M%S)"
+      mkdir -p "$archive_dir"
+
+      local moved=0
+      for f in "${local_dir}/queue/tasks/"*.yaml; do
+        [[ -f "$f" ]] && mv "$f" "$archive_dir/" && ((moved+=1)) || true
+      done
+      for f in "${local_dir}/queue/reports/"*.yaml; do
+        [[ -f "$f" ]] && mv "$f" "$archive_dir/" && ((moved+=1)) || true
+      done
+
+      cat > "${local_dir}/queue/shogun_to_karo.yaml" <<'YAML'
+status: idle
+tasks: []
+YAML
+
+      # pending.yaml を再作成
+      cat > "${local_dir}/queue/tasks/pending.yaml" <<'YAML'
+tasks: []
+YAML
+
+      cat > "${local_dir}/status/workers.yaml" <<YAML
+workers:
+$(for i in $(seq 1 "$ASHIGARU_COUNT"); do echo "  ashigaru_${i}: idle"; done)
+  gunshi: idle
+YAML
+
+      success "キューをリセットしました（退避ファイル: ${moved}件 → ${archive_dir}）"
+
+      if tmux has-session -t "$SESSION_AGENTS" 2>/dev/null; then
+        info "家老にキューリセットを通知中..."
+        tmux send-keys -t "${SESSION_AGENTS}:0.0" \
+          "キューをリセットしました。現在のタスクをすべてクリアし、idle状態に戻ってください。" Enter
+      fi
+
+      if [[ "$subcmd" == "" ]]; then
+        echo ""
+        echo -e "  詳細なリカバリーオプション:"
+        echo -e "  ${GREEN}shogun recover queue${NC}        キューのみリセット（↑ 今実行）"
+        echo -e "  ${GREEN}shogun recover karo${NC}         家老を再起動"
+        echo -e "  ${GREEN}shogun recover gunshi${NC}       軍師を再起動"
+        echo -e "  ${GREEN}shogun recover ashigaru <N>${NC}  足軽N番を再起動（1-${ASHIGARU_COUNT}）"
+        echo -e "  ${GREEN}shogun recover all${NC}          全員再起動（セッション維持）"
+        echo -e "  ${GREEN}shogun stop && shogun start${NC}  完全再起動"
+        echo ""
+      fi
+      ;;
+
+    # ── 家老だけ再起動 ────────────────────────────────────────────────────────
+    karo)
+      tmux has-session -t "$SESSION_AGENTS" 2>/dev/null \
+        || error "家老・足軽セッションが起動していません: shogun start を実行してください"
+
+      [[ -f "${local_dir}/tmp/karo_instruction.md" ]] \
+        || _make_instruction_file "karo" "$local_dir" "$project_dir" > /dev/null
+
+      info "家老を再起動中..."
+      _restart_claude_in_pane \
+        "${SESSION_AGENTS}:0.0" \
+        "${local_dir}/tmp/karo_instruction.md" \
+        "$project_dir"
+      success "家老を再起動しました"
+      info "確認: shogun agents pane 0"
+      ;;
+
+    # ── 軍師だけ再起動 ────────────────────────────────────────────────────────
+    gunshi)
+      tmux has-session -t "$SESSION_AGENTS" 2>/dev/null \
+        || error "家老・足軽セッションが起動していません: shogun start を実行してください"
+
+      [[ -f "${local_dir}/tmp/gunshi_instruction.md" ]] \
+        || _make_instruction_file "gunshi" "$local_dir" "$project_dir" > /dev/null
+
+      info "軍師を再起動中..."
+      _restart_claude_in_pane \
+        "${SESSION_AGENTS}:0.${GUNSHI_PANE}" \
+        "${local_dir}/tmp/gunshi_instruction.md" \
+        "$project_dir"
+      success "軍師を再起動しました"
+      info "確認: shogun agents pane ${GUNSHI_PANE}"
+      ;;
+
+    # ── 足軽N番だけ再起動 ────────────────────────────────────────────────────
+    ashigaru)
+      local n="${2:-}"
+      [[ -n "$n" ]] || error "足軽番号を指定してください: shogun recover ashigaru <1-${ASHIGARU_COUNT}>"
+      [[ "$n" =~ ^[1-7]$ ]] || error "足軽番号は 1〜${ASHIGARU_COUNT} で指定してください"
+
+      tmux has-session -t "$SESSION_AGENTS" 2>/dev/null \
+        || error "家老・足軽セッションが起動していません"
+
+      [[ -f "${local_dir}/tmp/ashigaru_instruction.md" ]] \
+        || _make_instruction_file "ashigaru" "$local_dir" "$project_dir" > /dev/null
+
+      info "足軽 ${n} を再起動中..."
+      _restart_claude_in_pane \
+        "${SESSION_AGENTS}:0.${n}" \
+        "${local_dir}/tmp/ashigaru_instruction.md" \
+        "$project_dir"
+      success "足軽 ${n} を再起動しました"
+      info "確認: shogun agents pane ${n}"
+      ;;
+
+    # ── 全員再起動（セッション維持）──────────────────────────────────────────
+    all)
+      tmux has-session -t "$SESSION_AGENTS" 2>/dev/null \
+        || error "家老・足軽セッションが起動していません"
+
+      info "instructionファイルを再生成中..."
+      _make_instruction_file "karo"     "$local_dir" "$project_dir" > /dev/null
+      _make_instruction_file "ashigaru" "$local_dir" "$project_dir" > /dev/null
+      _make_instruction_file "gunshi"   "$local_dir" "$project_dir" > /dev/null
+
+      # キューもリセット
+      cmd_recover queue
+
+      # 家老を再起動
+      info "家老を再起動中..."
+      _restart_claude_in_pane \
+        "${SESSION_AGENTS}:0.0" \
+        "${local_dir}/tmp/karo_instruction.md" \
+        "$project_dir"
+      sleep 1
+
+      # 足軽を順番に再起動
+      for i in $(seq 1 "$ASHIGARU_COUNT"); do
+        info "足軽 ${i} を再起動中..."
+        _restart_claude_in_pane \
+          "${SESSION_AGENTS}:0.${i}" \
+          "${local_dir}/tmp/ashigaru_instruction.md" \
+          "$project_dir"
+        sleep 0.3
+      done
+
+      # 軍師を再起動
+      info "軍師を再起動中..."
+      _restart_claude_in_pane \
+        "${SESSION_AGENTS}:0.${GUNSHI_PANE}" \
+        "${local_dir}/tmp/gunshi_instruction.md" \
+        "$project_dir"
+
+      echo ""
+      success "全員の再起動が完了しました（セッションは維持）"
+      info "確認: shogun agents"
+      echo ""
+      ;;
+
+    *)
+      error "不明なサブコマンド: $subcmd\n  queue / karo / gunshi / ashigaru <N> / all"
+      ;;
+  esac
+}
+
+# ── status ────────────────────────────────────────────────────────────────────
+cmd_status() {
+  local project_dir; project_dir="$(pwd)"
+  local local_dir="${project_dir}/${SHOGUN_LOCAL_DIR}"
+
+  echo ""; echo -e "${BOLD}⚔️  Shogun Status - ${PROJ}${NC}"; echo ""
+
+  # セッション状態
+  if tmux has-session -t "$SESSION_SHOGUN" 2>/dev/null; then
+    echo -e "  ${GREEN}✓${NC} 将軍 (${SESSION_SHOGUN}): 起動中"
+  else
+    echo -e "  ${RED}✗${NC} 将軍 (${SESSION_SHOGUN}): 停止中"
+  fi
+
+  if tmux has-session -t "$SESSION_AGENTS" 2>/dev/null; then
+    local n; n=$(tmux list-panes -t "$SESSION_AGENTS" 2>/dev/null | wc -l | tr -d ' ')
+    echo -e "  ${GREEN}✓${NC} 家老・足軽・軍師 (${SESSION_AGENTS}): 起動中 (${n}ペイン)"
+  else
+    echo -e "  ${RED}✗${NC} 家老・足軽・軍師 (${SESSION_AGENTS}): 停止中"
+  fi
+
+  # キューの状態
+  local queue_file="${local_dir}/queue/shogun_to_karo.yaml"
+  if [[ -f "$queue_file" ]]; then
+    local task_count
+    task_count=$(grep -c "^  - " "$queue_file" 2>/dev/null || echo "0")
+    echo ""
+    echo -e "  ${BOLD}キュー状態:${NC}"
+    echo -e "  shogun→karo: ${task_count}件"
+    local tasks_in_progress
+    tasks_in_progress=$(ls "${local_dir}/queue/tasks/"*.yaml 2>/dev/null | wc -l | tr -d ' ')
+    echo -e "  処理中タスク: ${tasks_in_progress}件"
+  fi
+
+  # ダッシュボード
+  local db="${local_dir}/dashboard.md"
+  [[ -f "$db" ]] && echo -e "\n  ${BOLD}ダッシュボード:${NC} ${db}"
+
+  echo ""
+  echo -e "  ${BOLD}リカバリーが必要な場合:${NC} ${YELLOW}shogun recover${NC}"
+  echo ""
+}
+
+# ── stop ──────────────────────────────────────────────────────────────────────
+cmd_stop() {
+  info "チームを停止中..."
+  if pkill -f "inbox_watcher.sh" 2>/dev/null; then
+    success "inbox_watcher プロセスを停止しました"
+  fi
+  if tmux has-session -t "$SESSION_SHOGUN" 2>/dev/null; then
+    tmux kill-session -t "$SESSION_SHOGUN"; success "将軍セッションを停止しました"
+  else warn "将軍セッションは既に停止しています"; fi
+  if tmux has-session -t "$SESSION_AGENTS" 2>/dev/null; then
+    tmux kill-session -t "$SESSION_AGENTS"; success "家老・足軽・軍師セッションを停止しました"
+  else warn "家老・足軽・軍師セッションは既に停止しています"; fi
+}
+
+# ── help ──────────────────────────────────────────────────────────────────────
+cmd_help() {
+  echo ""
+  echo -e "${BOLD}⚔️  shogun - Multi-Agent CLI v4${NC}"
+  echo ""
+  echo -e "  ${BOLD}基本操作:${NC}"
+  echo -e "    ${GREEN}shogun start${NC}                カレントディレクトリでチームを起動"
+  echo -e "    ${GREEN}shogun attach${NC}               将軍に接続して命令を与える"
+  echo -e "    ${GREEN}shogun agents${NC}               家老・足軽・軍師セッションに接続"
+  echo -e "    ${GREEN}shogun agents pane <0-8>${NC}    特定ペインに直接接続 (0=家老 1-7=足軽 8=軍師)"
+  echo -e "    ${GREEN}shogun status${NC}               チームの状態確認"
+  echo -e "    ${GREEN}shogun stop${NC}                 チームを停止"
+  echo -e "    ${GREEN}shogun init${NC}                 .shogun/ ディレクトリのみ初期化"
+  echo ""
+  echo -e "  ${BOLD}リカバリー:${NC}"
+  echo -e "    ${GREEN}shogun recover${NC}              キューリセット + 対処法を表示"
+  echo -e "    ${GREEN}shogun recover queue${NC}        キュー・ステータスのみリセット"
+  echo -e "    ${GREEN}shogun recover karo${NC}         家老だけ再起動"
+  echo -e "    ${GREEN}shogun recover gunshi${NC}       軍師だけ再起動"
+  echo -e "    ${GREEN}shogun recover ashigaru <N>${NC}  足軽N番だけ再起動 (1-${ASHIGARU_COUNT})"
+  echo -e "    ${GREEN}shogun recover all${NC}          全員再起動（セッション維持）"
+  echo -e "    ${YELLOW}shogun stop && shogun start${NC} 完全再起動（最終手段）"
+  echo ""
+  echo -e "  ${BOLD}構成:${NC} 将軍1 + 家老1 + 足軽${ASHIGARU_COUNT} + 軍師1"
+  echo -e "  SHOGUN_HOME=${SHOGUN_HOME}"
+  echo ""
+}
+
+# ── エントリーポイント ────────────────────────────────────────────────────────
+case "${1:-help}" in
+  start)          cmd_start                   ;;
+  init)           cmd_init                    ;;
+  attach)         cmd_attach                  ;;
+  agents)         cmd_agents "${2:-}" "${3:-}";;
+  status)         cmd_status                  ;;
+  recover)        cmd_recover "${2:-}" "${3:-}";;
+  stop)           cmd_stop                    ;;
+  help|--help|-h) cmd_help                    ;;
+  *) error "不明なコマンド: $1\n  shogun help でヘルプを表示" ;;
+esac

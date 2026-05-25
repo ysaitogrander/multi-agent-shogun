@@ -73,6 +73,8 @@
 !first_setup.sh
 !setup.sh
 !install.bat
+!/shogun
+!/install_shogun_cli.sh
 
 # Development tooling
 !Makefile
