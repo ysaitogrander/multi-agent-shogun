@@ -120,11 +120,20 @@ _setup_scripts() {
   # inbox_write.sh をプロジェクトlocal_dir対応ラッパーで上書き
   _write_inbox_wrapper "$scripts_dst" "$local_dir"
 
+  # .venv を SHOGUN_HOME からシンボリックリンクで提供（inbox_watcher が Python を要求）
+  local venv_src="${SHOGUN_HOME}/.venv"
+  local venv_dst="${project_dir}/.venv"
+  if [[ -d "$venv_src" && "$venv_src" != "$venv_dst" && ! -e "$venv_dst" ]]; then
+    ln -sfn "$venv_src" "$venv_dst"
+    info ".venv シンボリックリンクを作成: $venv_dst -> $venv_src"
+  fi
+
   # .gitignore
   local gitignore="${project_dir}/.gitignore"
   if [[ -f "$gitignore" ]]; then
     grep -q "^scripts$" "$gitignore" 2>/dev/null || printf '\n# shogun scripts\nscripts\n' >> "$gitignore"
     grep -q "^lib$" "$gitignore" 2>/dev/null || printf 'lib\n' >> "$gitignore"
+    grep -q "^\.venv$" "$gitignore" 2>/dev/null || printf '.venv\n' >> "$gitignore"
   fi
 
   info "scripts/inbox_write.sh をプロジェクト対応版に設定しました"
@@ -539,7 +548,7 @@ cmd_start() {
   # inbox_watcher起動（全エージェント分: 将軍+家老+足軽N+軍師）
   info "inbox_watcher を起動中..."
   mkdir -p "${project_dir}/logs"
-  pkill -f "inbox_watcher.sh" 2>/dev/null || true
+  pkill -f "bash.*scripts/inbox_watcher\.sh" 2>/dev/null || true
   sleep 0.5
   nohup bash "${project_dir}/scripts/inbox_watcher.sh" shogun \
     "${SESSION_SHOGUN}:0.0" claude \
@@ -834,7 +843,7 @@ cmd_status() {
 # ── stop ──────────────────────────────────────────────────────────────────────
 cmd_stop() {
   info "チームを停止中..."
-  if pkill -f "inbox_watcher.sh" 2>/dev/null; then
+  if pkill -f "bash.*scripts/inbox_watcher\.sh" 2>/dev/null; then
     success "inbox_watcher プロセスを停止しました"
   fi
   if tmux has-session -t "$SESSION_SHOGUN" 2>/dev/null; then
