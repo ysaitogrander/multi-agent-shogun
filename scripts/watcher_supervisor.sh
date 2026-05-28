@@ -76,6 +76,18 @@ start_all_watchers() {
     done < <(watcher_specs)
 }
 
+# idle足軽 自動/clear デーモン (cmd_585)。不在なら起動する。
+# idle_auto_clear.sh は判定専用で tmux を触らず、clear_command を inbox_write するのみ。
+start_auto_clear_if_missing() {
+    if [ ! -f "$SCRIPT_DIR/scripts/idle_auto_clear.sh" ]; then
+        return 0
+    fi
+    if pgrep -f "scripts/idle_auto_clear.sh" >/dev/null 2>&1; then
+        return 0
+    fi
+    nohup bash scripts/idle_auto_clear.sh >> logs/idle_auto_clear.log 2>&1 &
+}
+
 if [ "${1:-}" = "--print-watchers" ]; then
     watcher_specs
     exit 0
@@ -83,5 +95,6 @@ fi
 
 while true; do
     start_all_watchers
+    start_auto_clear_if_missing
     sleep 5
 done

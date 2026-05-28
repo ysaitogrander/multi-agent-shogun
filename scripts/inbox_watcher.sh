@@ -348,8 +348,13 @@ try:
             print("SKIP_DUPLICATE")
             raise SystemExit(0)
 
-    # Task YAML status guard: skip auto-recovery if task is cancelled or idle.
-    # This prevents restarting a task that Karo intentionally cancelled via clear_command.
+    # Task YAML status guard: skip auto-recovery for terminal/non-actionable statuses.
+    # - cancelled/idle: Karo intentionally cancelled the task via clear_command.
+    # - done/failed: terminal task (e.g. idle_auto_clear context回収 of a done/failed足軽).
+    #   Re-arming a recovery task_assigned would trigger a pointless Session Start空振り
+    #   (cmd_585 P2). A genuine redo always writes a fresh `assigned` task before clear,
+    #   so legitimate restarts are unaffected.
+    # nested(task:)/flat 両対応で status を取得する。
     task_yaml_path = os.path.join(
         os.path.dirname(os.path.dirname(inbox)), "tasks", f"{agent_id}.yaml"
     )
@@ -357,8 +362,11 @@ try:
         try:
             with open(task_yaml_path, "r", encoding="utf-8") as tf:
                 task_data = yaml.safe_load(tf) or {}
-            task_status = str(task_data.get("status") or "").strip().strip("'\"")
-            if task_status in ("cancelled", "idle"):
+            task_node = task_data.get("task") if isinstance(task_data, dict) else None
+            if not isinstance(task_node, dict):
+                task_node = task_data if isinstance(task_data, dict) else {}
+            task_status = str(task_node.get("status") or "").strip().strip("'\"")
+            if task_status in ("cancelled", "idle", "done", "failed"):
                 print(f"SKIP_CANCELLED:{task_status}")
                 raise SystemExit(0)
         except SystemExit:

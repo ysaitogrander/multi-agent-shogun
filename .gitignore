@@ -101,6 +101,7 @@
 !scripts/inbox_write.sh
 !scripts/inbox_watcher.sh
 !scripts/watcher_supervisor.sh
+!scripts/idle_auto_clear.sh
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh
 !scripts/build_instructions.sh

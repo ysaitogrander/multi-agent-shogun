@@ -891,6 +891,66 @@ YAML
     echo "$output" | grep -q "OK"
 }
 
+# --- T-RECOV-DONE-001: auto-recovery skipped when task is done (cmd_585 P2, flat YAML) ---
+
+@test "T-RECOV-DONE-001: enqueue_recovery_task_assigned skips if task YAML status is done (flat)" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        echo "messages: []" > "$INBOX"
+        mkdir -p "$(dirname "$INBOX")/../tasks"
+        cat > "$(dirname "$INBOX")/../tasks/test_agent.yaml" << "YAML"
+worker_id: test_agent
+task_id: subtask_test_done
+status: done
+YAML
+        r=$(enqueue_recovery_task_assigned)
+        # cmd_585 P2: done足軽の clear 後に無駄な再起動を投入しない
+        if [ "$r" = "SKIP_CANCELLED:done" ]; then echo "OK"; else echo "FAIL:$r"; fi
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "OK"
+}
+
+# --- T-RECOV-DONE-002: status guard handles nested task: structure (real ashigaru format) ---
+
+@test "T-RECOV-DONE-002: enqueue_recovery_task_assigned skips done with nested task: structure" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        echo "messages: []" > "$INBOX"
+        mkdir -p "$(dirname "$INBOX")/../tasks"
+        # 実 ashigaru の task YAML は status を task: 配下にネストする
+        cat > "$(dirname "$INBOX")/../tasks/test_agent.yaml" << "YAML"
+task:
+  task_id: subtask_test_nested_done
+  status: done
+YAML
+        r=$(enqueue_recovery_task_assigned)
+        if [ "$r" = "SKIP_CANCELLED:done" ]; then echo "OK"; else echo "FAIL:$r"; fi
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "OK"
+}
+
+# --- T-RECOV-DONE-003: auto-recovery skipped when task is failed (cmd_585 P2) ---
+
+@test "T-RECOV-DONE-003: enqueue_recovery_task_assigned skips if task YAML status is failed" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        echo "messages: []" > "$INBOX"
+        mkdir -p "$(dirname "$INBOX")/../tasks"
+        cat > "$(dirname "$INBOX")/../tasks/test_agent.yaml" << "YAML"
+worker_id: test_agent
+task_id: subtask_test_failed
+status: failed
+YAML
+        r=$(enqueue_recovery_task_assigned)
+        # cmd_585 P2: failed足軽の clear 後に失敗タスクの空振り再起動を投入しない
+        if [ "$r" = "SKIP_CANCELLED:failed" ]; then echo "OK"; else echo "FAIL:$r"; fi
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "OK"
+}
+
 # --- T-COPILOT-001: copilot /clear → Ctrl-C + restart ---
 
 @test "T-COPILOT-001: send_cli_command sends Ctrl-C + copilot restart for copilot /clear" {
