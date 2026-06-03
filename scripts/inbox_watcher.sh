@@ -921,8 +921,20 @@ send_wakeup() {
         local pane_content
         pane_content=$(timeout 3 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -5 || echo "")
         if echo "$pane_content" | grep -qF "$nudge"; then
-            # nudgeテキストが残存 → 送信失敗 → C-u クリアしてリトライ
-            echo "[$(date)] WARNING: nudge text still visible in pane, retrying (attempt $((attempt+1)))" >&2
+            # nudgeテキストが残存 → Enter取りこぼし可能性 → Enter再送+再confirm（暴走防止のためリトライ上限内）
+            echo "[$(date)] WARNING: nudge text visible after Enter — Enter may not have delivered for $AGENT_ID (attempt $((attempt+1))); resending Enter" >&2
+            timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null || true
+            sleep 0.5
+            # 再confirm: Enter再送後にnudgeテキストが消えたか確認
+            local pane_content_recheck
+            pane_content_recheck=$(timeout 3 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -5 || echo "")
+            if ! echo "$pane_content_recheck" | grep -qF "$nudge"; then
+                # Enter再送で確定
+                echo "[$(date)] Wake-up confirmed after Enter re-send for $AGENT_ID (${unread_count} unread, attempt $((attempt+1)))" >&2
+                return 0
+            fi
+            # 再送後も残存 → C-u クリアしてリトライ
+            echo "[$(date)] WARNING: nudge still visible after Enter re-send, clearing and retrying (attempt $((attempt+1)))" >&2
             timeout 5 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null || true
             sleep 0.3
             attempt=$((attempt+1))

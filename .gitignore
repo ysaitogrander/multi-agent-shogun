@@ -120,6 +120,7 @@
 !scripts/figma_fetch_record.sh
 !scripts/assign_to_copilot.sh
 !scripts/copilot_watcher.sh
+!scripts/fleet_watchdog.sh
 
 # SayTask (sample template only, not actual data)
 !saytask/

@@ -1398,3 +1398,95 @@ YAML
     ! grep -q "send-keys.*Escape" "$MOCK_LOG"
     ! grep -q "send-keys.*C-c" "$MOCK_LOG"
 }
+
+# --- T-NUDGE-RESEND-001: Enter取りこぼし検知 → Enter再送 → 確定 (subtask_706_u3_nudge) ---
+# Verifies (b): nudge text visible after Enter → re-send Enter → confirmed delivery.
+
+@test "T-NUDGE-RESEND-001: nudge text visible after Enter — re-send Enter confirms delivery" {
+    export CAPTURE_COUNT_FILE
+    CAPTURE_COUNT_FILE="$(mktemp)"
+    echo 0 > "$CAPTURE_COUNT_FILE"
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+
+        # Override tmux: first capture-pane returns nudge text (Enter not delivered),
+        # second capture-pane (re-confirm) returns empty (Enter re-send worked).
+        tmux() {
+            echo "tmux $*" >> "'"$MOCK_LOG"'"
+            if echo "$*" | grep -q "capture-pane"; then
+                count=$(cat "'"$CAPTURE_COUNT_FILE"'")
+                count=$((count + 1))
+                echo "$count" > "'"$CAPTURE_COUNT_FILE"'"
+                if [ "$count" -le 1 ]; then
+                    echo "inbox1"
+                else
+                    echo ""
+                fi
+                return 0
+            fi
+            if echo "$*" | grep -q "send-keys"; then
+                return "${MOCK_SENDKEYS_RC:-0}"
+            fi
+            if echo "$*" | grep -q "show-options"; then
+                echo "${MOCK_PANE_CLI:-}"
+                return 0
+            fi
+            if echo "$*" | grep -q "list-clients"; then
+                [ -n "${MOCK_LIST_CLIENTS:-}" ] && echo "$MOCK_LIST_CLIENTS"
+                return 0
+            fi
+            if echo "$*" | grep -q "display-message"; then
+                if echo "$*" | grep -q "pane_active"; then
+                    echo "${MOCK_PANE_ACTIVE:-0}"
+                else
+                    echo "mock_session"
+                fi
+                return 0
+            fi
+            return 0
+        }
+        export -f tmux
+
+        send_wakeup 1
+    '
+    rm -f "$CAPTURE_COUNT_FILE"
+    [ "$status" -eq 0 ]
+
+    echo "$output" | grep -qi "resending Enter"
+    echo "$output" | grep -qi "confirmed after Enter re-send"
+    [ "$(grep -c "send-keys -t test:0.0 Enter" "$MOCK_LOG")" -ge 2 ]
+}
+
+# --- T-NUDGE-RESEND-002: Enter再送後も残存 → リトライ上限で停止 (subtask_706_u3_nudge) ---
+# Verifies (c): no infinite loop when nudge text persists after re-send; retries bounded.
+
+@test "T-NUDGE-RESEND-002: nudge always visible after re-send — exhausts retries and logs WARNING" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+
+        tmux() {
+            echo "tmux $*" >> "'"$MOCK_LOG"'"
+            if echo "$*" | grep -q "capture-pane"; then
+                echo "inbox2"
+                return 0
+            fi
+            if echo "$*" | grep -q "send-keys"; then
+                return 0
+            fi
+            if echo "$*" | grep -q "show-options"; then
+                echo "${MOCK_PANE_CLI:-}"
+                return 0
+            fi
+            return 0
+        }
+        export -f tmux
+
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+
+    echo "$output" | grep -qi "WARNING\|failed"
+    enter_count=$(grep -c "send-keys -t test:0.0 Enter" "$MOCK_LOG" || echo 0)
+    [ "$enter_count" -lt 20 ]
+}
