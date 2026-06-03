@@ -38,9 +38,24 @@ skill_candidate:
   name: null        # e.g., "readme-improver"
   description: null # e.g., "Improve README for beginners"
   reason: null      # e.g., "Same pattern executed 3 times"
+
+# PRを伴うタスク必須 — CI全体(phpunit+lint等) conclusion:success 実測確認結果
+# PRなし・instructions編集等の非PRタスクはrun_id/conclusion=null可
+ci:
+  run_id: null      # gh run ID (例: 12345678901) — 実測値を記載。捏造禁止。
+  conclusion: null  # "success" | "failure" | null（PRなしタスクはnull）
+
+# Figma準拠タスクのみ必須（非 Figma タスクは省略可）
+tvf_verification:
+  canonical_map_checked: true  # context/figma-canonical-map.md を参照したか
+  figma_node_ids: []           # 確認した Figma node ID のリスト（捏造禁止）
+  fetch_date: ""               # 本タスク内でのフェッチ日時（YYYY-MM-DD）
+  within_48h: true
 ```
 
-**Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, purpose_gap, skill_candidate.
+**Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, purpose_gap, skill_candidate, ci.
+Figma準拠タスクでは `tvf_verification` も必須。
+**PRを伴うタスク**: `ci.run_id` + `ci.conclusion` は実測値必須（ローカル pass のみでの完了報告禁止 — local-vs-CIギャップ防止）。
 Missing fields = incomplete report.
 
 `purpose_gap.detected: true` の場合は実装を保留し、家老へ inbox_write で即報告すること。
@@ -75,11 +90,17 @@ Act without waiting for Karo's instruction:
 
 **On task completion** (in this order):
 1. Self-review deliverables (re-read your output)
-2. **Purpose validation**: Read `parent_cmd` in `queue/shogun_to_karo.yaml` and verify your deliverable actually achieves the cmd's stated purpose. If there's a gap between the cmd purpose and your output, note it in the report under `purpose_gap:`.
-3. Write report YAML
-4. Notify Gunshi via inbox_write (NOT Karo directly)
-5. **Check own inbox** (MANDATORY): Read `queue/inbox/ashigaru{N}.yaml`, process any `read: false` entries. This catches redo instructions that arrived during task execution. Skip = stuck idle until the next nudge escalation or task reassignment.
-6. (No delivery verification needed — inbox_write guarantees persistence)
+2. **CI green check** (PRを伴うタスク必須 — SKIP=FAIL):
+   `gh run list --branch <branch> --limit 1 --json databaseId,status,conclusion` を実行し、
+   CI 全体(phpunit + lint 等) の `conclusion: success` を★実測確認★してから次へ進む。
+   ローカル部分実行の pass 単独での完了報告は禁止（local-vs-CIギャップ防止）。
+   run_id と conclusion を report YAML の `ci` フィールドに必須記載する。
+   PRなしタスク（instructions編集・調査等）は `ci.run_id: null, ci.conclusion: null` で可。
+3. **Purpose validation**: Read `parent_cmd` in `queue/shogun_to_karo.yaml` and verify your deliverable actually achieves the cmd's stated purpose. If there's a gap between the cmd purpose and your output, note it in the report under `purpose_gap:`.
+4. Write report YAML
+5. Notify Gunshi via inbox_write (NOT Karo directly)
+6. **Check own inbox** (MANDATORY): Read `queue/inbox/ashigaru{N}.yaml`, process any `read: false` entries. This catches redo instructions that arrived during task execution. Skip = stuck idle until the next nudge escalation or task reassignment.
+   (No delivery verification needed — inbox_write guarantees persistence)
 
 **Quality assurance:**
 - After modifying files → verify with Read
@@ -97,10 +118,12 @@ Figma 準拠系タスク／Lord の事実主張に基づくタスクを受領し
 
 ### Self-check (実装前・必須)
 
-- [ ] **Fresh fetch**: Figma MCP で当該 node を本タスク内で再取得（24 時間以内のキャッシュ証跡不可）
+- [ ] **Fresh fetch**: `context/figma-canonical-map.md` で対象システムの正典ファイルキーを確認後、Figma MCP で当該 node を本タスク内で再取得（24 時間以内のキャッシュ証跡不可）
 - [ ] **Component inventory**: 取得結果のコンポーネント種別（Toggle / Switch / Radio / Checkbox 等）を report の `component_inventory` フィールドに列挙
 - [ ] **Assumption verification**: 殿/家老の前提主張と Figma 実態に乖離があれば即報告し、実装を保留（家老へ inbox_write、`purpose_gap.detected: true` で報告）
 - [ ] **PR 必須記載**: Figma 再取得日時・nodeID・コンポーネント種別を PR 本文に必須記載
+- [ ] **Backlog リンクドメイン**: PR 本文に Backlog URL を記載する場合は `grander.backlog.jp` を使用（`grander.backlog.com` は誤ドメイン・404になる）。完了定義: `grep grander.backlog.com <PR本文>` でゼロ件を実測確認。
+- [ ] **UI確認 / スクリーンショット / E2E**: UI確認・スクリーンショット・E2E は **Laravel Dusk** で行う。**★`mcp__playwright__browser_*` 系 MCP ツールでブラウザを起動するな★**。E2E/Dusk は家老担当・足軽はユニットテストのみ（詳細: `context/line_raffle.md` テスト方針参照）。
 
 ### サブエージェント自動チェック (Task tool 利用時)
 
@@ -719,6 +742,82 @@ For the 将軍 system, if Copilot CLI is integrated:
 | `.github/lsp.json` | Repo root | Repository-level LSP config |
 
 Location customizable via `XDG_CONFIG_HOME` environment variable.
+
+# ashigaru_copilot との協業方法（Shogun・Karo 向け）
+
+## 位置づけ
+
+`ashigaru_copilot` は **tmux グリッド外の独立エージェント**。  
+通常の ashigaru1〜7 グリッドには属さず、ホストターミナルで起動する。  
+`get_ashigaru_ids()` は数値サフィックス限定フィルタ済みのため、グリッド計算に混入しない。
+
+## タスク委譲：agmsg 経由（推奨）
+
+[agmsg](https://github.com/fujibee/agmsg) は SQLite 1ファイルのクロスエージェントメッセージング。  
+Copilot CLI 公式サポート済み。daemon 不要・tmux 依存なし。
+
+### 委譲フロー
+
+```
+Karo/Gunshi
+  └─ ~/.agents/skills/agmsg/scripts/send.sh shogun karo copilot "<指示>"
+       ↓ SQLite に書き込み（daemon 不要）
+
+Copilot CLI（mode: turn）
+  └─ ターン終了後の Stop フック → check-inbox.sh が自動チェック
+       ↓ メッセージあれば次ターンで受信・着手
+```
+
+### セットアップ（初回のみ・ホストマシンで実行）
+
+```bash
+# 1. インストール
+bash <(curl -fsSL https://raw.githubusercontent.com/fujibee/agmsg/main/setup.sh)
+
+# 2. Copilot CLI で参加（ホストターミナルで）
+/agmsg   # → team: shogun / agent: copilot / mode: turn
+
+# 3. Claude Code 側（Karo）でも参加
+~/.agents/skills/agmsg/scripts/join.sh shogun karo claude-code /path/to/line_raffle
+```
+
+### assign_to_copilot.sh からの呼び出し（copilot_watcher 方式）
+
+委譲フロー（新方式）:
+1. `assign_to_copilot.sh` → task YAML を atomic 書込
+2. `copilot_watcher` がポーリング検知
+3. `copilot --yolo -p "$(cat queue/tasks/ashigaru_copilot.yaml)"` で都度 spawn
+4. 完了後 agmsg で報告
+
+> ⚠️ **注意**: 1 spawn = premium request 1消費。重め・独立タスク限定での使用を推奨。
+
+## タスク適合判定
+
+### Copilot に任せて良いタスク（◎）
+
+| 条件 | 理由 |
+|------|------|
+| Figma 参照不要 | PreToolUse フック非適用。Figma 証跡管理不能 |
+| 独立性が高い（他エージェント待ちなし） | 非同期起動のため依存チェーン不可 |
+| 工数 XS〜M（1〜8h 相当） | Premium リクエスト上限に配慮 |
+
+### 禁止事項（✗）
+
+- Figma ノード取得が必要なタスク → Claude Code エージェントへ
+- develop への直接 push/マージ → 絶対禁止。rapid 経由のみ
+- 対話型コマンド（vim, git add -p 等）→ 非対話版に書き換えて再委譲
+
+## 完了報告フロー
+
+```
+Copilot
+  └─ queue/reports/ashigaru_copilot_report.yaml 更新
+  └─ agmsg send / inbox_write.sh で Gunshi に品質チェック依頼
+       ↓
+  Gunshi: QC → Karo へ報告
+       ↓
+  Karo: 確認 → 次タスク割当
+```
 
 ---
 

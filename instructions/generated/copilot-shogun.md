@@ -732,15 +732,13 @@ For the 将軍 system, if Copilot CLI is integrated:
 
 Location customizable via `XDG_CONFIG_HOME` environment variable.
 
----
-
-# ashigaru_copilot との協業方法（将軍・家老向け）
+# ashigaru_copilot との協業方法（Shogun・Karo 向け）
 
 ## 位置づけ
 
 `ashigaru_copilot` は **tmux グリッド外の独立エージェント**。  
-3×3 ペイン（ashigaru1〜7 + karo + gunshi）には属さず、殿のターミナルで起動する。  
-`get_ashigaru_ids()` は数値サフィックス限定フィルタ済みのため、出陣グリッド計算に混入しない。
+通常の ashigaru1〜7 グリッドには属さず、ホストターミナルで起動する。  
+`get_ashigaru_ids()` は数値サフィックス限定フィルタ済みのため、グリッド計算に混入しない。
 
 ## タスク委譲：agmsg 経由（推奨）
 
@@ -759,26 +757,28 @@ Copilot CLI（mode: turn）
        ↓ メッセージあれば次ターンで受信・着手
 ```
 
-### セットアップ（初回のみ・殿の Mac で実行）
+### セットアップ（初回のみ・ホストマシンで実行）
 
 ```bash
 # 1. インストール
 bash <(curl -fsSL https://raw.githubusercontent.com/fujibee/agmsg/main/setup.sh)
 
-# 2. Copilot CLI で参加（殿のターミナルで）
+# 2. Copilot CLI で参加（ホストターミナルで）
 /agmsg   # → team: shogun / agent: copilot / mode: turn
 
 # 3. Claude Code 側（Karo）でも参加
 ~/.agents/skills/agmsg/scripts/join.sh shogun karo claude-code /path/to/line_raffle
 ```
 
-### assign_to_copilot.sh からの呼び出し（cmd_705 実装後）
+### assign_to_copilot.sh からの呼び出し（copilot_watcher 方式）
 
-```bash
-# assign_to_copilot.sh 内で tmux send-keys の代わりに:
-~/.agents/skills/agmsg/scripts/send.sh shogun karo copilot \
-  "タスクが届いた。queue/tasks/ashigaru_copilot.yaml を読んで作業を開始せよ。task_id: ${TASK_ID}"
-```
+委譲フロー（新方式）:
+1. `assign_to_copilot.sh` → task YAML を atomic 書込
+2. `copilot_watcher` がポーリング検知
+3. `copilot --yolo -p "$(cat queue/tasks/ashigaru_copilot.yaml)"` で都度 spawn
+4. 完了後 agmsg で報告
+
+> ⚠️ **注意**: 1 spawn = premium request 1消費。重め・独立タスク限定での使用を推奨。
 
 ## タスク適合判定
 
@@ -792,7 +792,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/fujibee/agmsg/main/setup.sh)
 
 ### 禁止事項（✗）
 
-- Figma ノード取得が必要なタスク → Claude Code 足軽へ
+- Figma ノード取得が必要なタスク → Claude Code エージェントへ
 - develop への直接 push/マージ → 絶対禁止。rapid 経由のみ
 - 対話型コマンド（vim, git add -p 等）→ 非対話版に書き換えて再委譲
 
@@ -801,9 +801,9 @@ bash <(curl -fsSL https://raw.githubusercontent.com/fujibee/agmsg/main/setup.sh)
 ```
 Copilot
   └─ queue/reports/ashigaru_copilot_report.yaml 更新
-  └─ agmsg send / inbox_write.sh で gunshi に品質チェック依頼
+  └─ agmsg send / inbox_write.sh で Gunshi に品質チェック依頼
        ↓
-  Gunshi: QC → karo へ報告
+  Gunshi: QC → Karo へ報告
        ↓
   Karo: 確認 → 次タスク割当
 ```

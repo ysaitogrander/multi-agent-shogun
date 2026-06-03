@@ -101,17 +101,29 @@ Do this before dispatching subtasks (fast, safe, no dependencies).
 
 ### Archive on Completion
 
+**Auto-archive script available**: `bash scripts/archive_done_commands.sh`
+
 When marking a cmd as `done` or `cancelled`:
+1. Update the status in `queue/shogun_to_karo.yaml`
+2. Run the archive script (it handles steps 2-3 automatically):
+   - Moves all done/cancelled entries to `queue/shogun_to_karo_archive.yaml`
+   - Validates YAML integrity
+   - Creates backup before modification
+   - Auto-rollback on failure
+
+**Manual archive** (if script unavailable):
 1. Update the status in `queue/shogun_to_karo.yaml`
 2. Move the entire cmd entry to `queue/shogun_to_karo_archive.yaml`
 3. Delete the entry from `queue/shogun_to_karo.yaml`
 
-This keeps the active file small and readable. Only `pending` and
-`in_progress` entries remain in the active file.
+This keeps the active file small and readable (target: <20 active cmds).
+Only `pending` and `in_progress` entries remain in the active file.
 
 When a cmd is `paused` (e.g., project on hold), archive it too.
 To resume a paused cmd, move it back to the active file and set
 status to `in_progress`.
+
+**Recommended frequency**: Run archive script weekly, or after completing 5+ cmds.
 
 ### Checklist Before Every Dashboard Update
 
@@ -177,6 +189,7 @@ When ashigaru reports task completion, Karo handles these checks directly (no Gu
 | Frontmatter required fields | Grep/Read verification |
 | File naming conventions | Glob pattern check |
 | done_keywords.txt consistency | Read + compare |
+| Backlog URL domain (PR body) | `grep grander.backlog.com` = 0 hits (correct domain = `grander.backlog.jp`) |
 
 These are mechanical checks (L1-L2) — Karo can judge pass/fail in seconds.
 
@@ -276,11 +289,15 @@ Lord の前提主張と Figma 実態の乖離による誤実装を未然に防�
 task YAML に以下 4 ブロックを **必須記載** する。
 （軍師 cmd_510 v2 監査結論の制度化。CLAUDE.md「TVF Protocol」節を併読のこと）
 
+**正典ファイルキーは系統別可変**。タスク発行前に `context/figma-canonical-map.md` を参照し、
+対象システムの正典ファイルキーを確認すること。ファイルキーを task YAML に直書きせず、
+必ず正典マップを参照経由にすること。
+
 ```yaml
 tvf_protocol:
   step_1_fresh_fetch:
-    requirement: "Figma MCP の get_design_context を本タスク開始時に必須実行"
-    rationale: "24 時間以上前のキャッシュ証跡は不可。本タスク内で fresh fetch すること"
+    requirement: "context/figma-canonical-map.md で対象システムの正典ファイルキーを確認後、Figma MCP で当該 node を本タスク開始時に必須実行。★PR対象nodeを直前にfetch&recordすること★ — 別nodeの証跡では対象画面の鮮度は非保証"
+    rationale: "24 時間以上前のキャッシュ証跡は不可。本タスク内で fresh fetch すること。正典ファイルキーは系統別可変ゆえ canonical-map.md を必ず参照すること"
   step_2_component_inventory:
     requirement: "取得した node のコンポーネント種別 (Toggle/Switch/Radio/Checkbox 等) を一覧化してから実装開始"
     output: "report の component_inventory フィールドに列挙"
@@ -306,6 +323,24 @@ tvf_protocol:
 
 非 Figma タスクでも、Lord の事実主張に基づく実装を求めるなら本テンプレに準拠した
 「前提検証ブロック」を別途設けることが推奨される。
+
+### 新規 UI チケット起票時テンプレ（Figma 正典ノード必須記載）
+
+管理画面・タブレット系など UI を伴うチケットを Backlog に起票する際は、
+`context/figma-canonical-map.md` を参照して対応 Figma 正典ノードを記載する。
+
+```
+## 対応 Figma 正典ノード
+### 画面 N: <画面名>
+- 対応 Figma 正典ノード: <node_id>
+- URL: https://www.figma.com/design/<canonical_file_key_from_map>/?node-id=<n>&m=dev
+※ ノード不明な場合は「要特定」と記載（捏造禁止）
+※ 正典ファイルキーは context/figma-canonical-map.md を参照すること
+```
+
+- 新規起票時のみ必須（既存チケットは retroactive 対応不要）
+- ノード不明なまま「あとで追記」は禁止。起票時に特定または「要特定」明記のどちらかを選ぶこと
+- タブレット系・廃止画面の扱いは `context/figma-canonical-map.md` の各エントリを参照すること
 
 ## Autonomous Judgment (Act Without Being Told)
 
@@ -892,6 +927,82 @@ For the 将軍 system, if Copilot CLI is integrated:
 | `.github/lsp.json` | Repo root | Repository-level LSP config |
 
 Location customizable via `XDG_CONFIG_HOME` environment variable.
+
+# ashigaru_copilot との協業方法（Shogun・Karo 向け）
+
+## 位置づけ
+
+`ashigaru_copilot` は **tmux グリッド外の独立エージェント**。  
+通常の ashigaru1〜7 グリッドには属さず、ホストターミナルで起動する。  
+`get_ashigaru_ids()` は数値サフィックス限定フィルタ済みのため、グリッド計算に混入しない。
+
+## タスク委譲：agmsg 経由（推奨）
+
+[agmsg](https://github.com/fujibee/agmsg) は SQLite 1ファイルのクロスエージェントメッセージング。  
+Copilot CLI 公式サポート済み。daemon 不要・tmux 依存なし。
+
+### 委譲フロー
+
+```
+Karo/Gunshi
+  └─ ~/.agents/skills/agmsg/scripts/send.sh shogun karo copilot "<指示>"
+       ↓ SQLite に書き込み（daemon 不要）
+
+Copilot CLI（mode: turn）
+  └─ ターン終了後の Stop フック → check-inbox.sh が自動チェック
+       ↓ メッセージあれば次ターンで受信・着手
+```
+
+### セットアップ（初回のみ・ホストマシンで実行）
+
+```bash
+# 1. インストール
+bash <(curl -fsSL https://raw.githubusercontent.com/fujibee/agmsg/main/setup.sh)
+
+# 2. Copilot CLI で参加（ホストターミナルで）
+/agmsg   # → team: shogun / agent: copilot / mode: turn
+
+# 3. Claude Code 側（Karo）でも参加
+~/.agents/skills/agmsg/scripts/join.sh shogun karo claude-code /path/to/line_raffle
+```
+
+### assign_to_copilot.sh からの呼び出し（copilot_watcher 方式）
+
+委譲フロー（新方式）:
+1. `assign_to_copilot.sh` → task YAML を atomic 書込
+2. `copilot_watcher` がポーリング検知
+3. `copilot --yolo -p "$(cat queue/tasks/ashigaru_copilot.yaml)"` で都度 spawn
+4. 完了後 agmsg で報告
+
+> ⚠️ **注意**: 1 spawn = premium request 1消費。重め・独立タスク限定での使用を推奨。
+
+## タスク適合判定
+
+### Copilot に任せて良いタスク（◎）
+
+| 条件 | 理由 |
+|------|------|
+| Figma 参照不要 | PreToolUse フック非適用。Figma 証跡管理不能 |
+| 独立性が高い（他エージェント待ちなし） | 非同期起動のため依存チェーン不可 |
+| 工数 XS〜M（1〜8h 相当） | Premium リクエスト上限に配慮 |
+
+### 禁止事項（✗）
+
+- Figma ノード取得が必要なタスク → Claude Code エージェントへ
+- develop への直接 push/マージ → 絶対禁止。rapid 経由のみ
+- 対話型コマンド（vim, git add -p 等）→ 非対話版に書き換えて再委譲
+
+## 完了報告フロー
+
+```
+Copilot
+  └─ queue/reports/ashigaru_copilot_report.yaml 更新
+  └─ agmsg send / inbox_write.sh で Gunshi に品質チェック依頼
+       ↓
+  Gunshi: QC → Karo へ報告
+       ↓
+  Karo: 確認 → 次タスク割当
+```
 
 ---
 
