@@ -734,4 +734,106 @@ Location customizable via `XDG_CONFIG_HOME` environment variable.
 
 ---
 
+# ashigaru_copilot との協業方法（将軍・家老向け）
+
+## 位置づけ
+
+`ashigaru_copilot` は **tmux グリッド外の独立エージェント**。  
+3×3 ペイン（ashigaru1〜7 + karo + gunshi）には属さず、殿のターミナル（別 session）で起動する。  
+`get_ashigaru_ids()` は数値サフィックス限定フィルタ済みのため、出陣グリッド計算に混入しない。
+
+## タスク委譲手順
+
+### ✅ 正しい委譲手順（現在）
+
+```bash
+# 家老・軍師から呼ぶ
+bash scripts/assign_to_copilot.sh \
+  "<task_id>" \
+  "<目的（完了形）>" \
+  "<実行指示（詳細）>" \
+  "<project_id>" \
+  "<priority: high|medium|low>"
+```
+
+このスクリプトは以下を実行する:
+1. `queue/tasks/ashigaru_copilot.yaml` を上書き（タスク内容）
+2. `scripts/inbox_write.sh` で `ashigaru_copilot` に inbox 通知
+3. ntfy push で殿のスマホへ通知（`LINE抽選[Copilot]` トピック）
+4. tmux send-keys で `multiagent:copilot-cli.0` を起床（⚠️ 後述：現在機能不全）
+
+### ⚠️ 現在の既知バグ（要インフラ改修）
+
+| バグ | 内容 | 影響 |
+|------|------|------|
+| **wake-up 未到達** | tmux send-keys は tmux 外ターミナル（殿の ttys035 等）に原理的に届かない | Copilot が自力で着手しない |
+| **fswatch watcher 単発** | `gtimeout 30 fswatch -1` は30秒で消滅、常駐ループでない | 起動後しばらくしか受信できない |
+| **inbox_watcher 誤宛** | `ashigaru_copilot` → `multiagent:agents.7`（足軽7のペイン）に誤ルーティング | 足軽7へ空 nudge が飛ぶ副作用 |
+
+### 暫定ワークアラウンド（インフラ改修前）
+
+タスク YAML + inbox の書込は機能する。  
+**殿が手動でターミナルを確認し Copilot に促す**ことで動作する。
+
+```bash
+# 殿のターミナルで確認（Copilot CLI が起動済みの場合）
+# assign_to_copilot.sh 実行後、殿が Copilot CLI の画面を開いて
+# 「タスクが来ています」と声をかけるか、Enter を押す
+```
+
+### 将来の正しい姿（cmd 化対象）
+
+インフラ改修 cmd の骨子:
+
+1. `assign_to_copilot.sh` の tmux 依存起床を除去
+2. **常駐 watcher daemon 新設**:  
+   inbox YAML の変更を監視 → `copilot --yolo -p "$(cat queue/tasks/ashigaru_copilot.yaml)"` で非対話起動
+3. **inbox_watcher の誤宛修正**:  
+   `ashigaru_copilot` のルーティングを `multiagent:agents.7` から正しいターミナルへ是正
+4. `shutsujin_departure.sh` に Copilot 用ウィンドウ自動作成を追加（オプション）
+
+## タスク適合判定
+
+### Copilot に任せて良いタスク（◎）
+
+| 条件 | 理由 |
+|------|------|
+| Figma 参照不要 | PreToolUse フック非適用。Figma 証跡管理不能 |
+| 独立性が高い（他エージェントの出力待ちなし） | 非同期起動のため依存チェーン不可 |
+| 工数 XS〜M（1〜8h 相当） | Premium リクエスト上限に配慮 |
+| コード生成・調査・ドキュメント作成 | 得意領域 |
+
+### Copilot に任せてはいけないタスク（✗）
+
+| 条件 | 代替 |
+|------|------|
+| Figma ノード取得が必要 | Claude Code 足軽へ委譲 |
+| 対話型コマンド（vim, git add -p 等） | コマンドを非対話版に書き換えて再委譲 |
+| develop への直接 push/マージ | 絶対禁止。rapid 経由のみ |
+| 他足軽の YAML 書き換え | 自 YAML（ashigaru_copilot.yaml）のみ可 |
+
+## 完了報告フロー
+
+```
+Copilot
+  └─ queue/reports/ashigaru_copilot_report.yaml を更新
+  └─ inbox_write.sh gunshi "品質チェックを仰ぎたし"
+       ↓
+  Gunshi: QC → inbox_write.sh karo "完了報告"
+       ↓
+  Karo: 確認 → 次タスク割当
+```
+
+## 参照ファイル
+
+| ファイル | 用途 |
+|----------|------|
+| `scripts/assign_to_copilot.sh` | タスク委譲スクリプト（家老・軍師が使用） |
+| `queue/tasks/ashigaru_copilot.yaml` | 現在割当中タスク |
+| `queue/inbox/ashigaru_copilot.yaml` | 受信 inbox |
+| `queue/reports/ashigaru_copilot_report.yaml` | Copilot からの完了報告 |
+| `docs/agents/ashigaru-copilot.md` | Copilot 足軽統合ガイド（詳細版） |
+
+---
+
 *Sources: [GitHub Copilot CLI Docs](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli), [Copilot CLI Repository](https://github.com/github/copilot-cli), [Enhanced Agents Changelog (2026-01-14)](https://github.blog/changelog/2026-01-14-github-copilot-cli-enhanced-agents-context-management-and-new-ways-to-install/), [Plan Mode Changelog (2026-01-21)](https://github.blog/changelog/2026-01-21-github-copilot-cli-plan-before-you-build-steer-as-you-go/), [PR #10 (yuto-ts) Copilot対応](https://github.com/yohey-w/multi-agent-shogun/pull/10)*
