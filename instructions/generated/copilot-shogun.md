@@ -734,4 +734,80 @@ Location customizable via `XDG_CONFIG_HOME` environment variable.
 
 ---
 
+# ashigaru_copilot との協業方法（将軍・家老向け）
+
+## 位置づけ
+
+`ashigaru_copilot` は **tmux グリッド外の独立エージェント**。  
+3×3 ペイン（ashigaru1〜7 + karo + gunshi）には属さず、殿のターミナルで起動する。  
+`get_ashigaru_ids()` は数値サフィックス限定フィルタ済みのため、出陣グリッド計算に混入しない。
+
+## タスク委譲：agmsg 経由（推奨）
+
+[agmsg](https://github.com/fujibee/agmsg) は SQLite 1ファイルのクロスエージェントメッセージング。  
+Copilot CLI 公式サポート済み。daemon 不要・tmux 依存なし。
+
+### 委譲フロー
+
+```
+Karo/Gunshi
+  └─ ~/.agents/skills/agmsg/scripts/send.sh shogun karo copilot "<指示>"
+       ↓ SQLite に書き込み（daemon 不要）
+
+Copilot CLI（mode: turn）
+  └─ ターン終了後の Stop フック → check-inbox.sh が自動チェック
+       ↓ メッセージあれば次ターンで受信・着手
+```
+
+### セットアップ（初回のみ・殿の Mac で実行）
+
+```bash
+# 1. インストール
+bash <(curl -fsSL https://raw.githubusercontent.com/fujibee/agmsg/main/setup.sh)
+
+# 2. Copilot CLI で参加（殿のターミナルで）
+/agmsg   # → team: shogun / agent: copilot / mode: turn
+
+# 3. Claude Code 側（Karo）でも参加
+~/.agents/skills/agmsg/scripts/join.sh shogun karo claude-code /path/to/line_raffle
+```
+
+### assign_to_copilot.sh からの呼び出し（cmd_705 実装後）
+
+```bash
+# assign_to_copilot.sh 内で tmux send-keys の代わりに:
+~/.agents/skills/agmsg/scripts/send.sh shogun karo copilot \
+  "タスクが届いた。queue/tasks/ashigaru_copilot.yaml を読んで作業を開始せよ。task_id: ${TASK_ID}"
+```
+
+## タスク適合判定
+
+### Copilot に任せて良いタスク（◎）
+
+| 条件 | 理由 |
+|------|------|
+| Figma 参照不要 | PreToolUse フック非適用。Figma 証跡管理不能 |
+| 独立性が高い（他エージェント待ちなし） | 非同期起動のため依存チェーン不可 |
+| 工数 XS〜M（1〜8h 相当） | Premium リクエスト上限に配慮 |
+
+### 禁止事項（✗）
+
+- Figma ノード取得が必要なタスク → Claude Code 足軽へ
+- develop への直接 push/マージ → 絶対禁止。rapid 経由のみ
+- 対話型コマンド（vim, git add -p 等）→ 非対話版に書き換えて再委譲
+
+## 完了報告フロー
+
+```
+Copilot
+  └─ queue/reports/ashigaru_copilot_report.yaml 更新
+  └─ agmsg send / inbox_write.sh で gunshi に品質チェック依頼
+       ↓
+  Gunshi: QC → karo へ報告
+       ↓
+  Karo: 確認 → 次タスク割当
+```
+
+---
+
 *Sources: [GitHub Copilot CLI Docs](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli), [Copilot CLI Repository](https://github.com/github/copilot-cli), [Enhanced Agents Changelog (2026-01-14)](https://github.blog/changelog/2026-01-14-github-copilot-cli-enhanced-agents-context-management-and-new-ways-to-install/), [Plan Mode Changelog (2026-01-21)](https://github.blog/changelog/2026-01-21-github-copilot-cli-plan-before-you-build-steer-as-you-go/), [PR #10 (yuto-ts) Copilot対応](https://github.com/yohey-w/multi-agent-shogun/pull/10)*
