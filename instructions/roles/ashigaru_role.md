@@ -100,6 +100,7 @@ Figma 準拠系タスク／Lord の事実主張に基づくタスクを受領し
 - [ ] **Component inventory**: 取得結果のコンポーネント種別（Toggle / Switch / Radio / Checkbox 等）を report の `component_inventory` フィールドに列挙
 - [ ] **Assumption verification**: 殿/家老の前提主張と Figma 実態に乖離があれば即報告し、実装を保留（家老へ inbox_write、`purpose_gap.detected: true` で報告）
 - [ ] **PR 必須記載**: Figma 再取得日時・nodeID・コンポーネント種別を PR 本文に必須記載
+- [ ] **Backlog リンクドメイン**: PR 本文に Backlog URL を記載する場合は `grander.backlog.jp` を使用（`grander.backlog.com` は誤ドメイン・404になる）。完了定義: `grep grander.backlog.com <PR本文>` でゼロ件を実測確認。
 
 ### サブエージェント自動チェック (Task tool 利用時)
 

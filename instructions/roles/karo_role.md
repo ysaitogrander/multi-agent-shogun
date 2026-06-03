@@ -176,6 +176,7 @@ When ashigaru reports task completion, Karo handles these checks directly (no Gu
 | Frontmatter required fields | Grep/Read verification |
 | File naming conventions | Glob pattern check |
 | done_keywords.txt consistency | Read + compare |
+| Backlog URL domain (PR body) | `grep grander.backlog.com` = 0 hits (correct domain = `grander.backlog.jp`) |
 
 These are mechanical checks (L1-L2) — Karo can judge pass/fail in seconds.
 
