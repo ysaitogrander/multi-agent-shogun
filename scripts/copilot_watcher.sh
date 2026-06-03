@@ -92,14 +92,27 @@ except Exception as e:
 PY
 }
 
-# ─── agmsg 報告 ──────────────────────────────────────────────────────────────
+# ─── 報告 (宛先別経路分岐) ───────────────────────────────────────────────────
+# gunshi/karo は agmsg 未参加 → file-inbox(inbox_write.sh) 経由
+# shogun 等 agmsg メンバー → 従来の agmsg 経路
 report() {
     local to="$1"
     local msg="$2"
-    if [ -f "$AGMSG_SEND" ]; then
-        bash "$AGMSG_SEND" "$AGMSG_TEAM" "copilot_watcher" "$to" "$msg" 2>/dev/null || true
+    local inbox_write="$SCRIPT_DIR/scripts/inbox_write.sh"
+    if [[ "$to" == "gunshi" || "$to" == "karo" ]]; then
+        if [ -f "$inbox_write" ]; then
+            bash "$inbox_write" "$to" "$msg" report_received copilot_watcher 2>/dev/null \
+                || log "WARN: inbox_write.sh failed for $to"
+        else
+            log "WARN: inbox_write.sh not found, cannot report to $to"
+        fi
     else
-        log "WARN: agmsg send.sh not found, cannot report to $to"
+        if [ -f "$AGMSG_SEND" ]; then
+            bash "$AGMSG_SEND" "$AGMSG_TEAM" "copilot_watcher" "$to" "$msg" 2>/dev/null \
+                || log "WARN: agmsg send.sh failed for $to"
+        else
+            log "WARN: agmsg send.sh not found, cannot report to $to"
+        fi
     fi
 }
 
