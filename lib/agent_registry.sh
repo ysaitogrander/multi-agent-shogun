@@ -88,10 +88,27 @@ agent_registry_agents() {
     printf '%s\n' "${parsed[@]}"
 }
 
+# Returns 0 when the agent should participate in pane-based monitoring.
+# Mirrors get_ashigaru_ids(): ashigaru names require a purely numeric suffix.
+# All other agents (karo, gunshi, …) pass through unconditionally.
+agent_registry_is_pane_agent() {
+    local agent="$1"
+    case "$agent" in
+        ashigaru*)
+            local suffix="${agent#ashigaru}"
+            case "$suffix" in
+                '' | *[!0-9]*) return 1 ;;
+            esac
+            ;;
+    esac
+    return 0
+}
+
 agent_registry_multiagent_agents() {
     local agent
     while IFS= read -r agent; do
         [ "$agent" = "shogun" ] && continue
+        agent_registry_is_pane_agent "$agent" || continue
         printf '%s\n' "$agent"
     done < <(agent_registry_agents)
 }
