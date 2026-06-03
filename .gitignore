@@ -56,6 +56,7 @@
 !lib/ntfy_auth.sh
 !lib/agent_status.sh
 !lib/agent_registry.sh
+!lib/copilot_safety.sh
 
 # Multi-CLI: Codex auto-load file
 !AGENTS.md
@@ -115,6 +116,8 @@
 !scripts/ratelimit_check.sh
 !scripts/switch_cli.sh
 !scripts/dashboard-viewer.py
+!scripts/figma_fresh_fetch_guard.sh
+!scripts/figma_fetch_record.sh
 
 
 # SayTask (sample template only, not actual data)
