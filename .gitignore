@@ -119,7 +119,7 @@
 !scripts/figma_fresh_fetch_guard.sh
 !scripts/figma_fetch_record.sh
 !scripts/assign_to_copilot.sh
-
+!scripts/copilot_watcher.sh
 
 # SayTask (sample template only, not actual data)
 !saytask/
