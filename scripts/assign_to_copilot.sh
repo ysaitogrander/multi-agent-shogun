@@ -174,7 +174,7 @@ check_figma_gate() {
     local figma_relevant=false
     while IFS= read -r p; do
         [ -z "$p" ] && continue
-        if is_figma_relevant_path "$p"; then
+        if is_definitely_figma_ui "$p"; then
             figma_relevant=true
             break
         fi

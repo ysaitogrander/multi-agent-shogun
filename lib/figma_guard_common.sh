@@ -54,6 +54,32 @@ is_figma_relevant_path() {
     return 0
 }
 
+# ─── is_definitely_figma_ui <path> ────────────────────────────
+# Returns 0 (true)  — path is definitively Figma-governed UI (allowlist match).
+# Returns 1 (false) — path is unknown or backend-only → no evidence required.
+#
+# Positive-only (contrast with is_figma_relevant_path):
+#   Unknown paths → 1 (false). Use for Layer2 assigner gate where
+#   blocking non-Figma routes is an error. CI (H2/H3) uses
+#   is_figma_relevant_path (conservative) as the authoritative backstop.
+#
+# Allowlist (positive Figma UI — same set as is_figma_relevant_path):
+#   resources/views/**/*.blade.php, *.css, *.scss, *.sass,
+#   tailwind.config.*, resources/js/**, resources/ts/**,
+#   resources/vue/**, public/**/*.{css,js}
+is_definitely_figma_ui() {
+    local path="$1"
+
+    # Positive allowlist — definitively Figma-governed UI
+    if printf '%s' "$path" | grep -qE \
+        '(resources/views/.*\.blade\.php|\.blade\.php$|\.css$|\.scss$|\.sass$|tailwind\.config\.|resources/js/|resources/ts/|resources/vue/|public/.*\.(css|js)$)'; then
+        return 0
+    fi
+
+    # Unknown or backend-only path — no evidence required (positive-only)
+    return 1
+}
+
 # ─── has_fresh_evidence [since_hours] [node_id] ───────────────
 # Returns 0 if a Figma fetch was recorded within <since_hours> hours (default: 48).
 # If node_id is given, the matching line must also contain "node:<node_id>".
