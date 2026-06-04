@@ -13,7 +13,7 @@ mkdir -p logs queue/inbox
 # Returns one agent name per line; skips panes with no @agent_id set.
 # This replaces the static settings-order registry, eliminating off-by-one misrouting.
 live_multiagent_agents() {
-    tmux list-panes -t multiagent -F '#{@agent_id}' 2>/dev/null \
+    tmux list-panes -t multiagent:agents -F '#{@agent_id}' 2>/dev/null \
         | grep -v '^$'
 }
 
@@ -22,7 +22,7 @@ live_multiagent_agents() {
 resolve_pane_by_agent_id() {
     local agent="$1"
     local pane_idx
-    pane_idx=$(tmux list-panes -t multiagent -F '#{pane_index} #{@agent_id}' 2>/dev/null \
+    pane_idx=$(tmux list-panes -t multiagent:agents -F '#{pane_index} #{@agent_id}' 2>/dev/null \
         | awk -v a="$agent" '$2 == a { print $1; exit }')
     [ -n "$pane_idx" ] || return 1
     printf 'multiagent:agents.%s\n' "$pane_idx"
@@ -118,9 +118,28 @@ start_fleet_watchdog_if_missing() {
     nohup bash scripts/fleet_watchdog.sh >> logs/fleet_watchdog.log 2>&1 &
 }
 
+# copilot_watcher.sh 常駐化 (cmd_705 T8)
+# fail-safe: config/copilot_watcher.enabled ファイルが存在する場合のみ起動。
+# デフォルトOFF。明示有効化(touch config/copilot_watcher.enabled)で初めて常駐化する。
+# 実daemon起動とE2Eは家老(F-QR-001完了後)。kill厳禁(D006)。
+start_copilot_watcher_if_missing() {
+    if [ ! -f "$SCRIPT_DIR/scripts/copilot_watcher.sh" ]; then
+        return 0
+    fi
+    # fail-safe: enabled フラグファイルが存在しない場合は起動しない (デフォルトOFF)
+    if [ ! -f "$SCRIPT_DIR/config/copilot_watcher.enabled" ]; then
+        return 0
+    fi
+    if pgrep -f "scripts/copilot_watcher.sh" >/dev/null 2>&1; then
+        return 0
+    fi
+    nohup bash scripts/copilot_watcher.sh >> logs/copilot_watcher.log 2>&1 &
+}
+
 if [ "${1:-}" = "--print-watchers" ]; then
     watcher_specs
     printf 'fleet_watchdog\t(managed-daemon)\tlogs/fleet_watchdog.log\n'
+    printf 'copilot_watcher\t(managed-daemon/enabled=OFF)\tlogs/copilot_watcher.log\n'
     exit 0
 fi
 
@@ -129,5 +148,6 @@ while true; do
     start_auto_clear_if_missing
     start_action_notifier_if_missing
     start_fleet_watchdog_if_missing
+    start_copilot_watcher_if_missing
     sleep 5
 done
