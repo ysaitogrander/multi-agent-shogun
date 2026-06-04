@@ -57,6 +57,7 @@
 !lib/agent_status.sh
 !lib/agent_registry.sh
 !lib/copilot_safety.sh
+!lib/figma_guard_common.sh
 
 # Multi-CLI: Codex auto-load file
 !AGENTS.md
