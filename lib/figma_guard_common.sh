@@ -44,9 +44,9 @@ is_figma_relevant_path() {
         return 0
     fi
 
-    # Denylist — definitively backend-only
+    # Denylist — definitively backend-only (any prefix like src/ is tolerated)
     if printf '%s' "$path" | grep -qE \
-        '^(app/|database/migrations/|tests/|routes/|config/)'; then
+        '(^|.*/)(app|database/migrations|tests|routes|config)/'; then
         return 1
     fi
 

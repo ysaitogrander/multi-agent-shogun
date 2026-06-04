@@ -39,6 +39,9 @@ fi
 # 共有安全ゲート: lib/copilot_safety.sh から validate_command / warn_external_api をロード
 source "$SCRIPT_DIR/../lib/copilot_safety.sh"
 
+# Figma委譲ゲート共有ライブラリ (H1 lib/figma_guard_common.sh を source して判定共用)
+source "$SCRIPT_DIR/../lib/figma_guard_common.sh"
+
 # ── バリデーション実行 (書込前) ──────────────────────────────────
 if ! validate_command "$COMMAND"; then
     exit 1
@@ -148,24 +151,104 @@ if ! check_dedup_conflict "$PURPOSE" "$COMMAND"; then
     exit 1
 fi
 
+# ── Figma委譲ゲート (Layer2: 配賦元担保) ─────────────────────────
+# [Layer2=配賦元担保。最終権威はLayer3=CI(H3)。Copilotはフックガード外ゆえ本ゲートで事前担保する。]
+FIGMA_EMBED_NODE_ID=""
+FIGMA_EMBED_URL=""
+
+check_figma_gate() {
+    local purpose="$1"
+    local command="$2"
+    local combined="$purpose $command"
+
+    # Figma関連パスを抽出 (スラッシュ含む文字列)
+    local paths
+    paths=$(printf '%s' "$combined" | grep -oE '[a-zA-Z0-9_][a-zA-Z0-9_./-]*/[a-zA-Z0-9_./-]+' 2>/dev/null || true)
+
+    # パスが抽出できない場合: 非UIタスクとみなしゲート素通り
+    if [ -z "$paths" ]; then
+        return 0
+    fi
+
+    # 抽出パスのいずれかがFigma-relevantか判定
+    local figma_relevant=false
+    while IFS= read -r p; do
+        [ -z "$p" ] && continue
+        if is_figma_relevant_path "$p"; then
+            figma_relevant=true
+            break
+        fi
+    done <<< "$paths"
+
+    if ! $figma_relevant; then
+        return 0  # 非Figmaタスク: ゲート素通り
+    fi
+
+    # Figma-relevant: 48h以内の取得証跡を確認
+    if ! has_fresh_evidence 48; then
+        echo "🚨 [FIGMA-GATE BLOCKED] Figma-relevantなタスクの配賦を中止します。" >&2
+        echo "   理由: 48時間以内のFigma取得証跡が見つかりません。" >&2
+        echo "   (CopilotはPreToolUseフックガード外のため、配賦元での証跡担保が必須)" >&2
+        echo "   対策: Figmaを取得後、証跡を記録してから再実行してください。" >&2
+        return 1
+    fi
+
+    # 証跡あり: 正典node/URLをembedするため設定 (引数ENV優先, 次いでcanonical-map推定)
+    local node_id="${FIGMA_NODE_ID:-}"
+    local url="${FIGMA_URL:-}"
+
+    if [ -z "$node_id" ]; then
+        local canonical_map="$SHOGUN_ROOT/context/figma-canonical-map.md"
+        if [ -f "$canonical_map" ]; then
+            if printf '%s' "$combined" | grep -qiE '(tablet|タブレット)'; then
+                node_id="4560:89033"
+                url="https://www.figma.com/design/xDQ4U6O2LUfIrftJGzacqm/?node-id=4560:89033&m=dev"
+            elif printf '%s' "$combined" | grep -qiE '(admin|管理|reservation|予約|raffle|抽選|user|ユーザ)'; then
+                node_id="209:23439"
+                url="https://www.figma.com/design/xDQ4U6O2LUfIrftJGzacqm/?node-id=209:23439&m=dev"
+            else
+                node_id="要特定"
+                url="要特定"
+            fi
+        else
+            node_id="要特定"
+            url="要特定"
+        fi
+    fi
+
+    FIGMA_EMBED_NODE_ID="$node_id"
+    FIGMA_EMBED_URL="$url"
+    echo "[figma-gate] 証跡OK。正典node/URLをtask YAMLにembed: node=${FIGMA_EMBED_NODE_ID}" >&2
+    return 0
+}
+
+if ! check_figma_gate "$PURPOSE" "$COMMAND"; then
+    exit 1
+fi
+
 TIMESTAMP=$(date "+%Y-%m-%dT%H:%M:%S")
 
 # タスクYAML atomic書き込み (tmp→mv でレース回避)
 mkdir -p "$(dirname "$TASK_FILE")"
 TASK_FILE_TMP="${TASK_FILE}.tmp.$$"
-cat > "$TASK_FILE_TMP" << EOF
-task_id: "${TASK_ID}"
-agent: ashigaru_copilot
-status: work
-command: "${COMMAND}"
-purpose: "${PURPOSE}"
-project: "${PROJECT}"
-priority: ${PRIORITY}
-timestamp: "${TIMESTAMP}"
-acceptance_criteria:
-  - "コマンドが正常に完了すること"
-  - "エラーが発生しないこと"
-EOF
+{
+    printf 'task_id: "%s"\n' "$TASK_ID"
+    printf 'agent: ashigaru_copilot\n'
+    printf 'status: work\n'
+    printf 'command: "%s"\n' "$COMMAND"
+    printf 'purpose: "%s"\n' "$PURPOSE"
+    printf 'project: "%s"\n' "$PROJECT"
+    printf 'priority: %s\n' "$PRIORITY"
+    printf 'timestamp: "%s"\n' "$TIMESTAMP"
+    if [ -n "$FIGMA_EMBED_NODE_ID" ]; then
+        printf '# Figma-gate embed: Copilotが自前取得せず参照できるよう正典node/URLを配賦時にembed\n'
+        printf 'figma_node_id: "%s"\n' "$FIGMA_EMBED_NODE_ID"
+        printf 'figma_url: "%s"\n' "$FIGMA_EMBED_URL"
+    fi
+    printf 'acceptance_criteria:\n'
+    printf '  - "コマンドが正常に完了すること"\n'
+    printf '  - "エラーが発生しないこと"\n'
+} > "$TASK_FILE_TMP"
 mv "$TASK_FILE_TMP" "$TASK_FILE"
 
 echo "[assign] タスク割り当て完了: $TASK_FILE"
