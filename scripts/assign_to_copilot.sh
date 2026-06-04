@@ -183,6 +183,10 @@ if [ -f "$NTFY_SCRIPT" ]; then
     bash "$NTFY_SCRIPT" "📋 [Copilot] タスク割当: ${TASK_ID} — ${PURPOSE}" 2>/dev/null || true
 fi
 
+# agmsg wake: copilotのmonitorを経由して確実着手を促す (fail-safe: 送信失敗してもタスク書込は既に成功)
+bash ~/.agents/skills/agmsg/scripts/send.sh shogun shogun copilot \
+    "${TASK_ID} を queue/tasks/ashigaru_copilot.yaml に配賦した。実行し完了を report+inbox(karo/gunshi)+agmsg(shogun) で報告せよ" || true
+
 echo ""
 echo "✅ Copilot足軽へのタスク割り当て完了"
 echo "   task_id:  $TASK_ID"
