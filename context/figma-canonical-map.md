@@ -63,6 +63,30 @@ This screen exists as part of the admin user management menu hierarchy (利用�
 
 ---
 
+### 顔写真チェック起点 ユーザー詳細・編集画面群 — 実装対象（cmd_690b混同防止）
+
+★ **廃止はstandalone /users/{id}（USER-10）のみ。顔写真チェック系ユーザー詳細（4560:57288/55842 cluster）は実装対象。** ★
+
+| 画面 | Controller / Route | Node ID | 廃止 | 備考 |
+|------|--------------------|---------|------|------|
+| 顔写真チェック一覧（/face-check） | `FaceSimilarityResultController@index` | `4560:57288` | ✗ 実装対象 | 利用者管理 → 顔写真チェック |
+| 顔写真チェック詳細（/face-check/{id}） | `FaceSimilarityResultController@show` | `4560:55842` | ✗ 実装対象 | 顔写真チェック経由の利用者詳細・編集 |
+| 利用者詳細（/users/{id}） | `UserController@show` | `4560:55306` ※ | ✗ 実装対象 | admin/利用者管理 → 利用者詳細（SDD USER-10の admin版） |
+| standalone /users/{id} | — | — | ✅ **廃止（USER-10）** | Backlog USER-10で除外済 |
+
+※ `4560:55306` はトースト通知状態の画面（インライン編集保存後）。  
+※ 「SDD USER-10」は admin 配下の利用者詳細を指す（standalone廃止とは別物）。
+
+**ルート整理**（routes/web.php）:
+- `GET /face-check` → 顔写真チェック一覧（`FaceSimilarityResultController@index`）
+- `GET /face-check/{id}` → 顔写真チェック詳細（`FaceSimilarityResultController@show`）
+- `GET /users` → 利用者一覧（`UserController@index`）
+- `GET /users/{id}` → 利用者詳細（`UserController@show`）★admin配下・実装対象
+
+*cmd_713 Phase1 監査 2026-06-05 ashigaru5*
+
+---
+
 ### Standalone User Detail Page `/users/{id}` — DEPRECATED
 
 ⚠️ **Confusion risk**: This is NOT the same as the active **Admin User Management → User Detail/Edit Screen** (node `4560:55306`) listed above.
