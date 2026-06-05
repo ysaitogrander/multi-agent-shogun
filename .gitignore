@@ -139,6 +139,10 @@ logs/
 !docs/
 !docs/philosophy.md
 !docs/vps_pr118_verification_plan.md
+!docs/figma-evidence-guard.md
+!docs/figma-evidence/
+!docs/figma-evidence/*.md
+!docs/figma-evidence/*.json
 
 # Screenshots (masked — no secrets)
 !images/

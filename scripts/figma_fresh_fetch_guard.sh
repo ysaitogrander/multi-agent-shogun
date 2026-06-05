@@ -19,18 +19,21 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-EVIDENCE_LOG="$SCRIPT_DIR/logs/figma_fetch_evidence.log"
 BYPASS_FILE="$SCRIPT_DIR/.figma-guard-bypass"
 THRESHOLD_HOURS=48
+
+# Load shared guard lib (provides has_fresh_evidence, scans both log + per-PR dir)
+# shellcheck source=../lib/figma_guard_common.sh
+source "$SCRIPT_DIR/lib/figma_guard_common.sh"
 
 # ─── Read hook input ───
 INPUT=$(cat)
 
 # ─── Extract tool_name and command ───
-TOOL_NAME=$(echo "$INPUT" | python3 -c \
+TOOL_NAME=$(printf '%s' "$INPUT" | python3 -c \
     "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" \
     2>/dev/null || echo "")
-COMMAND=$(echo "$INPUT" | python3 -c \
+COMMAND=$(printf '%s' "$INPUT" | python3 -c \
     "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('command',''))" \
     2>/dev/null || echo "")
 
@@ -40,7 +43,7 @@ if [ "$TOOL_NAME" != "Bash" ]; then
 fi
 
 # ─── Only intercept gh pr create / gh pr new ───
-if ! echo "$COMMAND" | grep -qE 'gh[[:space:]]+(pr[[:space:]]+(create|new)|pr[[:space:]]+create)'; then
+if ! printf '%s' "$COMMAND" | grep -qE 'gh[[:space:]]+(pr[[:space:]]+(create|new)|pr[[:space:]]+create)'; then
     exit 0
 fi
 
@@ -51,57 +54,36 @@ if [ -f "$BYPASS_FILE" ]; then
     exit 0
 fi
 
-# ─── Check Figma fetch evidence within threshold ───
-THRESHOLD_SECONDS=$((THRESHOLD_HOURS * 3600))
-
-FOUND_FRESH=0
-FRESH_LINE=""
-
-if [ -f "$EVIDENCE_LOG" ] && [ -s "$EVIDENCE_LOG" ]; then
-    while IFS= read -r line; do
-        # Skip blank lines and comments
-        [[ -z "$line" || "$line" == \#* ]] && continue
-
-        TS_STR=$(echo "$line" | awk '{print $1}')
-        [ -z "$TS_STR" ] && continue
-
-        ENTRY_EPOCH=$(python3 -c "
-import sys
-from datetime import datetime, timezone
-ts = '$TS_STR'
-try:
-    dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    print(int(dt.timestamp()))
-except Exception as e:
-    print(0)
-" 2>/dev/null || echo "0")
-
-        CURRENT_EPOCH=$(date +%s)
-        DIFF=$(( CURRENT_EPOCH - ENTRY_EPOCH ))
-
-        if [ "$ENTRY_EPOCH" -gt 0 ] && [ "$DIFF" -ge 0 ] && [ "$DIFF" -le "$THRESHOLD_SECONDS" ]; then
-            FOUND_FRESH=1
-            FRESH_LINE="$line"
-            break
-        fi
-    done < "$EVIDENCE_LOG"
-fi
-
-# ─── Decision ───
-if [ "$FOUND_FRESH" -eq 1 ]; then
-    # Fresh evidence found → approve (exit 0, no output)
+# ─── Check Figma fetch evidence within threshold (both log + per-PR dir) ───
+if has_fresh_evidence "$THRESHOLD_HOURS"; then
+    # Fresh evidence found in log or docs/figma-evidence/ → approve
     exit 0
 fi
 
-# No fresh evidence → block with actionable reason
-if [ -f "$EVIDENCE_LOG" ] && [ -s "$EVIDENCE_LOG" ]; then
-    LAST_LINE=$(grep -v '^[[:space:]]*$' "$EVIDENCE_LOG" | grep -v '^#' | tail -1 || echo "(none)")
-    BLOCK_REASON="Figma取得証跡が${THRESHOLD_HOURS}h以上古いか対象外。最終証跡: [${LAST_LINE}]。mcp__figma__view_nodeで最新Figmaデータを取得後、bash scripts/figma_fetch_record.sh <node_id> <description> で証跡を記録してからPR作成せよ。正典マップ: context/figma-canonical-map.md"
-else
-    BLOCK_REASON="Figma取得証跡なし(logs/figma_fetch_evidence.log未作成/空)。mcp__figma__view_nodeでFigmaデータを取得後、bash scripts/figma_fetch_record.sh <node_id> <description> で証跡を記録してからPR作成せよ。正典マップ: context/figma-canonical-map.md"
+# ─── No fresh evidence → block with actionable message ───
+LAST_LOG_LINE=""
+if [ -f "$FIGMA_GUARD_EVIDENCE_LOG" ] && [ -s "$FIGMA_GUARD_EVIDENCE_LOG" ]; then
+    LAST_LOG_LINE=$(grep -v '^[[:space:]]*$' "$FIGMA_GUARD_EVIDENCE_LOG" | tail -1 || true)
 fi
+
+if [ -n "$LAST_LOG_LINE" ]; then
+    EVIDENCE_STATUS="最終log証跡: [${LAST_LOG_LINE}] (${THRESHOLD_HOURS}h超過)"
+else
+    EVIDENCE_STATUS="証跡なし (logs/figma_fetch_evidence.log 未作成または空、docs/figma-evidence/*.md も未コミット)"
+fi
+
+BLOCK_REASON="Figma Evidence Guard: 48h以内の証跡が見つかりません。
+
+${EVIDENCE_STATUS}
+
+必要な対応:
+  1. 対象画面のFigma nodeを48h以内に実取得 (mcp__figma__view_node または Figma REST API)
+  2. 証跡を記録・コミット:
+     bash scripts/figma_fetch_record.sh \"<node-id>\" \"<説明>\" --url \"<figma-url>\" --file \"<対象ファイル>\" --pr-file
+     git add docs/figma-evidence/<生成file>.md && git commit -m 'chore(figma-evidence): add fetch evidence'
+  3. 証跡blockに node/file/fetched(ISO)/url が含まれることを確認
+
+参照: docs/figma-evidence-guard.md / context/figma-canonical-map.md"
 
 python3 -c "
 import json, sys
