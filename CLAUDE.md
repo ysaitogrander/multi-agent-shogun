@@ -2,7 +2,6 @@
 # multi-agent-shogun System Configuration
 version: "3.0"
 updated: "2026-02-07"
-description: "Claude Code + tmux multi-agent parallel dev platform with sengoku military hierarchy"
 
 hierarchy: "Lord (human) → Shogun → Karo → Ashigaru 1-7 / Gunshi"
 communication: "YAML files + inbox mailbox system (event-driven, NO polling)"
@@ -12,18 +11,18 @@ tmux_sessions:
   multiagent: { pane_0: karo, pane_1-7: ashigaru1-7, pane_8: gunshi }
 
 files:
-  config: config/projects.yaml          # Project list (summary)
-  projects: "projects/<id>.yaml"        # Project details (git-ignored, contains secrets)
-  context: "context/{project}.md"       # Project-specific notes for ashigaru/gunshi
-  cmd_queue: queue/shogun_to_karo.yaml  # Shogun → Karo commands
-  tasks: "queue/tasks/ashigaru{N}.yaml" # Karo → Ashigaru assignments (per-ashigaru)
-  gunshi_task: queue/tasks/gunshi.yaml  # Karo → Gunshi strategic assignments
-  pending_tasks: queue/tasks/pending.yaml # Karo管理の保留タスク（blocked未割当）
-  reports: "queue/reports/ashigaru{N}_report.yaml" # Ashigaru → Gunshi reports
-  gunshi_report: queue/reports/gunshi_report.yaml  # Gunshi → Karo strategic reports
-  dashboard: dashboard.md              # Human-readable summary (secondary data)
-  daily_log: "logs/daily/YYYY-MM-DD.md" # Karo appends cmd summary on completion. Shogun reads for daily reports.
-  ntfy_inbox: queue/ntfy_inbox.yaml    # Incoming ntfy messages from Lord's phone
+  config: config/projects.yaml
+  projects: "projects/<id>.yaml"          # git-ignored, contains secrets
+  context: "context/{project}.md"
+  cmd_queue: queue/shogun_to_karo.yaml
+  tasks: "queue/tasks/ashigaru{N}.yaml"
+  gunshi_task: queue/tasks/gunshi.yaml
+  pending_tasks: queue/tasks/pending.yaml  # blocked未割当タスク保留
+  reports: "queue/reports/ashigaru{N}_report.yaml"
+  gunshi_report: queue/reports/gunshi_report.yaml
+  dashboard: dashboard.md                  # secondary data (Karo summary)
+  daily_log: "logs/daily/YYYY-MM-DD.md"
+  ntfy_inbox: queue/ntfy_inbox.yaml
 
 cmd_format:
   required_fields: [id, timestamp, purpose, acceptance_criteria, command, project, priority, status]
@@ -39,10 +38,6 @@ task_status_transitions:
   - "RULE: Ashigaru updates OWN yaml only. Never touch other ashigaru's yaml."
   - "RULE: On /clear recovery, if assigned=done → DO NOT re-send report. Wait idle. (prevents duplicate report loop)"
   - "RULE: blocked状態タスクを足軽へ事前割当しない。前提完了までpending_tasksで保留。"
-
-# Status definitions are authoritative in:
-# - instructions/common/task_flow.md (Status Reference)
-# Do NOT invent new status values without updating that document.
 
 mcp_tools: [Notion, Playwright, GitHub, Sequential Thinking, Memory]
 mcp_usage: "Lazy-loaded. Always ToolSearch before first use."
@@ -62,8 +57,6 @@ language:
 
 ## Session Start / Recovery (all agents)
 
-**This is ONE procedure for ALL situations**: fresh start, compaction, session continuation, or any state where you see CLAUDE.md. You cannot distinguish these cases, and you don't need to. **Always follow the same steps.**
-
 1. Identify self: `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'`
 2. `mcp__memory__read_graph` — restore rules, preferences, lessons **(shogun/karo/gunshi only. ashigaru skip this step — task YAML is sufficient)**
 3. **Read `memory/MEMORY.md`** (shogun only) — persistent cross-session memory. If file missing, skip. *Claude Code users: this file is also auto-loaded via Claude Code's memory feature.*
@@ -71,7 +64,7 @@ language:
 4. Rebuild state from primary YAML data (queue/, tasks/, reports/)
 5. Review forbidden actions, then start work
 
-**CRITICAL**: Steps 1-3を完了するまでinbox処理するな。`inboxN` nudgeが先に届いても無視し、自己識別→memory→instructions読み込みを必ず先に終わらせよ。Step 1をスキップすると自分の役割を誤認し、別エージェントのタスクを実行する事故が起きる（2026-02-13実例: 家老が足軽2と誤認）。
+**CRITICAL**: Steps 1-3を完了するまでinbox処理するな。`inboxN` nudgeが先に届いても無視し、自己識別→memory→instructions読み込みを必ず先に終わらせよ。Step 1をスキップすると自分の役割を誤認し、別エージェントのタスクを実行する事故が起きる。
 
 **CRITICAL**: dashboard.md is secondary data (karo's summary). Primary data = YAML files. Always verify from YAML.
 
@@ -114,19 +107,6 @@ Agent-to-agent communication uses file-based mailbox:
 bash scripts/inbox_write.sh <target_agent> "<message>" <type> <from>
 ```
 
-Examples:
-```bash
-# Shogun → Karo
-bash scripts/inbox_write.sh karo "cmd_048を書いた。実行せよ。" cmd_new shogun
-
-# Ashigaru → Gunshi
-bash scripts/inbox_write.sh gunshi "足軽5号、任務完了。品質チェックを仰ぎたし。" report_received ashigaru5
-
-# Karo → Ashigaru
-bash scripts/inbox_write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
-```
-
-Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
 **Agents NEVER call tmux send-keys directly.**
 
 ## Delivery Mechanism
@@ -137,8 +117,7 @@ Two layers:
    - **優先度1**: Agent self-watch (agent's own `inotifywait` on its inbox) → no nudge needed
    - **優先度2**: `tmux send-keys` — short nudge only (text and Enter sent separately, 0.3s gap)
 
-The nudge is minimal: `inboxN` (e.g. `inbox3` = 3 unread). That's it.
-**Agent reads the inbox file itself.** Message content never travels through tmux — only a short wake-up signal.
+`inboxN` nudge = N unread. Agent reads `queue/inbox/{agent}.yaml` directly.
 
 Special cases (CLI commands sent via `tmux send-keys`):
 - `type: clear_command` → sends context reset command via send-keys (Claude/Copilot/Kimi: `/clear`, Codex/OpenCode: `/new`)
@@ -154,7 +133,7 @@ Special cases (CLI commands sent via `tmux send-keys`):
 
 ## Inbox Processing Protocol (karo/ashigaru/gunshi)
 
-When you receive `inboxN` (e.g. `inbox3`):
+When you receive `inboxN`:
 1. `Read queue/inbox/{your_id}.yaml`
 2. Find all entries with `read: false`
 3. Process each message according to its `type`
@@ -168,9 +147,6 @@ When you receive `inboxN` (e.g. `inbox3`):
 2. If any entries have `read: false` → process them
 3. Only then go idle
 
-This is NOT optional. If you skip this and a redo message is waiting,
-you will be stuck idle until the next escalation or task reassignment.
-
 ## Redo Protocol
 
 When Karo determines a task needs to be redone:
@@ -179,8 +155,6 @@ When Karo determines a task needs to be redone:
 2. Karo sends `clear_command` type inbox message (NOT `task_assigned`)
 3. inbox_watcher delivers the CLI-appropriate context reset command to the agent → session reset
 4. Agent recovers via Session Start procedure, reads new task YAML, starts fresh
-
-Race condition is eliminated: the context reset wipes old context. Agent re-reads YAML with new task_id.
 
 ## Report Flow (interrupt prevention)
 
@@ -229,7 +203,7 @@ System manages ALL white-collar work, not just self-improvement. Project folders
 # TVF Protocol — Task Verification First (all agents)
 
 **事実検証ファースト**プロトコル。Lord の前提主張と外部実態（Figma / 仕様書 / 外部API 等）の乖離による
-誤実装を未然に防ぐ仕組み。軍師 cmd_510 v2 監査の制度化として全エージェントに義務化する。
+誤実装を未然に防ぐ仕組み。全エージェントに義務化する。
 
 ## 4層構造
 
@@ -239,6 +213,14 @@ System manages ALL white-collar work, not just self-improvement. Project folders
 | B | self-check（実装前の事実確認） | Ashigaru | `instructions/roles/ashigaru_role.md` → TVF 節 |
 | C | report テンプレに purpose_gap 必須化 | Ashigaru → Gunshi → Karo | 下記参照 |
 | D | サブエージェント種別整合性チェック | Ashigaru | `instructions/roles/ashigaru_role.md` → TVF 節 |
+
+## Figma 正典マップ（canonical-map）
+
+Figma ファイル・ノードの権威情報は `context/figma-canonical-map.md` に集約する。実装着手前・チケット起票時は必ずこのマップを参照し、正典ファイルキーと代表ノードを確認すること。固定値を指示文や instructions に直書きせず、常に本マップを参照経由とすること（系統別可変のため）。
+
+- **管理画面系チケット起票時必須**: 対応 Figma ノード ID と URL を本マップを引いて明記。不明な場合は「要特定」と記載（捏造禁止）。
+- **廃止画面**: ユーザー詳細画面（standalone `/users/{id}`）は存在しない（Backlog: USER-10）。実装禁止。
+- **タブレット系**: 2026-06-03 裁定により旧ファイルから `xDQ4U6O2LUfIrftJGzacqm` へ切替済。旧ファイルは参照外。
 
 ## C: purpose_gap 必須フィールド
 
@@ -258,11 +240,11 @@ purpose_gap:
 
 - 🥇 `figma-fresh-fetch-guard` — Pre-PR hook (48h 以内取得証跡必須化) **High推奨**
 - 🥈 `figma-component-type-checker` — Figma 種別と実装 UI の差分自動検知 **Med-High**
-- 🥉 `lord-assumption-verifier` — Lord 指示の事実主張を自動検証 **High推奨へ昇格**（軍師 cmd_510 v2）
+- 🥉 `lord-assumption-verifier` — Lord 指示の事実主張を自動検証 **High推奨へ昇格**
 
 # Batch Processing Protocol (all agents)
 
-When processing large datasets (30+ items requiring individual web search, API calls, or LLM generation), follow this protocol. Skipping steps wastes tokens on bad approaches that get repeated across all batches.
+When processing large datasets (30+ items requiring individual web search, API calls, or LLM generation), follow this protocol.
 
 ## Default Workflow (mandatory for large-scale tasks)
 
@@ -278,10 +260,10 @@ When processing large datasets (30+ items requiring individual web search, API c
 
 ## Rules
 
-1. **Never skip batch1 QC gate.** A flawed approach repeated 15 batches = 15× wasted tokens.
+1. **Never skip batch1 QC gate.**
 2. **Batch size limit**: 30 items/session (20 if file is >60K tokens). Reset session (/new or /clear) between batches.
 3. **Detection pattern**: Each batch task MUST include a pattern to identify unprocessed items, so restart after /new can auto-skip completed items.
-4. **Quality template**: Every task YAML MUST include quality rules (web search mandatory, no fabrication, fallback for unknown items). Never omit — this caused 100% garbage output in past incidents.
+4. **Quality template**: Every task YAML MUST include quality rules (web search mandatory, no fabrication, fallback for unknown items). Never omit.
 5. **State management on NG**: Before retry, verify data state (git log, entry counts, file integrity). Revert corrupted data if needed.
 6. **Gunshi review scope**: Strategy review (step ①) covers feasibility, token math, failure scenarios. Post-failure review (step ③) covers root cause and fix verification.
 
