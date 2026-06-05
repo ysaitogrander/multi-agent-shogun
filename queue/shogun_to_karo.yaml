@@ -1,0 +1,477 @@
+commands:
+- id: cmd_674
+  timestamp: '2026-06-02T22:40:00+09:00'
+  north_star: proteras LINE抽選システムのフルリプレイスを前進させる。発注者(斎藤)担当の積みチケットを順次消化し、レビュー可能なPRに落とすことで開発を実需へ近づける。
+  purpose: LINELOT_GR(プロジェクトID 185335)で発注者(斎藤・user 583192)が担当する未対応チケットのうち、backend(Laravel)リポで完結する分を順次実装してPR化する。実装が不要/既対応のものはbacklogに理由をコメントして完了にする。各PR本文には対象チケットの内容(要約+チケットリンク)を必ず含める。
+  acceptance_criteria:
+  - 対象チケットを家老がトリアージし『backend実装対象 / 対応不要(理由) / 本cmd対象外(repo違い)』に三分類した一覧がreport YAMLに残る
+  - 'backend実装対象は1チケットごとに feature ブランチ→PR を作成し、PR本文に『対象: LINELOT_GR-NNN <タイトル> / 内容要約
+    / backlogリンク』を日本語で明記'
+  - 対応不要/既対応のチケットは backlog に理由を日本語コメントし、ステータスを完了にする(発注者の明示許可済)
+  - 実装対象チケットには backlog に作成PRのリンクをコメントする(マージは発注者ゆえチケット完了化はしない)
+  - 全PR title/body/commit message・コメントに内部用語(殿/cmd/cmd_NNN/B-XXX/足軽/軍師/家老/worktree
+    等)の混入ゼロ=実測grep
+  - 各実装はTVF(SDD/Figma/既存コード照合)を経る。Figma準拠UIは48時間以内取得の証跡を残す
+  - batch1(最初の1〜2チケット)完了時点で一旦停止し将軍QCゲートを通す。OK後に残りを自走で消化する
+  command: "発注者(斎藤・backlog user 583192)が LINELOT_GR(project 185335)で担当する\n未対応チケット計20件のうち、backend(Laravel)リポで完結する分を順次消化し\n\
+    レビュー可能なPRに落とせ。Batch Processing Protocol(batch1でQCゲート→以降自走)に則れ。\n\n■ 担当チケット一覧(全て未対応・backlog\
+    \ MCPで本文取得して着手)\n  backend本命候補:\n    - LINELOT_GR-43  単体テスト整備（重要導線/境界値/例外）\n \
+    \   - LINELOT_GR-157 【設計】顔写真アップロードAPI Lambda→Laravel移設\n    - LINELOT_GR-177 顔写真チェック専用ページ実装（ユーザー管理）\n\
+    \    - LINELOT_GR-178 整理券詳細からの顔写真チェック画面実装\n    - LINELOT_GR-179 整理券基本設定編集 文字数オーバー時UI実装\n\
+    \    - LINELOT_GR-180 ユーザー詳細画面の画像サイズ絞り込み機能実装\n    - LINELOT_GR-181 ユーザー詳細画面の参加履歴表示順切り替え実装\n\
+    \    - LINELOT_GR-182 ホール詳細編集画面 ロゴ背景色カラーピッカー実装\n    - LINELOT_GR-183 整理券詳細 参加者顔写真のhover拡大プレビューUI\n\
+    \    - LINELOT_GR-184 整理券基本設定編集 ツールチップポップアップUI実装\n    - LINELOT_GR-185 整理券デザイン\
+    \ 独自枠エラー状態1/2のFigma対応確認・是正\n    - LINELOT_GR-186 ホール詳細編集 ツールチップポップアップUI実装\n  \
+    \  - LINELOT_GR-187 ホール詳細編集 整理券無効時の動的UI変化実装\n  本cmd対象外(repo違い・着手せず一覧に記録のみ):\n\
+    \    - LINELOT_GR-188〜192 feat(tablet) … タブレット/LIFF(liff リポ)\n    - LINELOT_GR-144\
+    \ 【インフラ】teramoba Lambda SSM移行 … aws_backend/インフラ\n    - LINELOT_GR-176 Figmaギャップ統合バックログ\
+    \ v4 … 追跡用メタチケット\n  ※repo帰属はTVFで各自確認。家老が「これはbackend」と判断するものは取り込んでよい。\n\n■ 進め方(詳細は家老が決定)\n\
+    \  1. 戦略(対象/分類/batch割当/トークン見積)を立て、軍師レビューを通す。\n  2. 各チケット着手前に backend の git/PR\
+    \ 現況を突合(dedup)。\n     既にPR有/マージ済(例: ナビ・アイコン・frame色など直近対応分)は\n     『既対応』として理由コメント+完了化し、二重実装を避けよ。\n\
+    \  3. batch1(1〜2チケット)を実装→PR→将軍QC。QC OK で残りを自走消化。\n  4. 各PR本文に対象チケットの内容(要約+リンク)を日本語で記載。\n\
+    \  5. 対応不要は backlog に理由コメント+ステータス完了。実装分はPRリンクをコメント(チケット完了化はしない=マージは発注者)。\n\n■\
+    \ 品質規律\n  - main/develop 直接不可触。force push は feature ブランチ限定 --force-with-lease(D003/D004)。\n\
+    \  - PR/commit/コメントに内部用語混入ゼロ=実測grep。\n  - TVF徹底(SDD/Figma/コード照合)。捏造禁止。Figma準拠UIは48h以内取得証跡。\n\
+    \  - マージは発注者(殿)。PRはOPEN/レビュー可能状態まで。\n"
+  project: line-raffle
+  priority: high
+  status: in_progress
+- id: cmd_676
+  timestamp: '2026-06-03T00:35:00+09:00'
+  north_star: proteras LINE抽選システムを実需投入に耐える品質へ底上げする。backlog に明文化されていない実装の不足・負債・リファクタ余地を能動的に発見し解消することで、後工程の手戻りと障害リスクを減らす。
+  purpose: backlog チケットの有無に関わらず、現状の backend develop の実装内容を点検し、不十分な点(機能欠落・SDD/正典乖離・テスト不足・リファクタ余地・一貫性欠如・セキュリティ/パフォーマンス懸念・デッドコード/暫定実装)を洗い出して優先度付きの
+    findings に整理し、タスク化して順次PR化する。
+  acceptance_criteria:
+  - backend develop 実装を下記観点で点検した結果を、優先度(high/med/low)×工数見積×根拠(ファイル:行・SDD参照)付きの findings
+    一覧として report に残す
+  - findings は『機能欠落/正典乖離』『テスト不足』『リファクタ(重複・肥大・責務分離・命名)』『一貫性(バリデーション/エラー/レスポンス)』『セキュリティ(認可・権限境界・入力検証・mass
+    assignment)』『パフォーマンス(N+1・索引)』『デッドコード/暫定/TODO』に分類される
+  - high 優先の findings から順にタスク化し、1件=1 feature ブランチ→PR を作成する(PR本文に対象 finding と根拠・変更概要を日本語明記)
+  - リファクタPRは挙動を変えない範囲で、既存テストの緑維持(または不足分のテスト追加)を伴う。挙動変更を伴う場合は purpose_gap で申告し家老/発注者確認を仰ぐ
+  - batch1(最初の1〜2 findings 修正PR)完了時点で将軍QCゲートを通し、観点と粒度の妥当性を確認してから残りを自走で進める
+  - cmd_675(タブレット5画面等)で在flightのファイルと衝突しないよう着手範囲を調整する(同一ファイル競合の回避)
+  - 全PR title/body/commit message・コメントに内部用語の混入ゼロ=実測grep。main/develop 直接不可触
+  command: "backlog に無い観点も含め、現状 develop の実装を能動的に点検して\n不十分点を洗い出し、タスク化して順次進めよ。Batch\
+    \ Processing Protocol に則る。\n進め方の詳細(観点割当・足軽分担・batch粒度)は家老が決定。\n\n■ 進め方\n  1. まず点検フェーズ(読み取り中心)を実施し、findings\
+    \ 一覧(優先度×工数×根拠)を作る。\n     戦略・観点の網羅性を軍師レビューに通してから本格化せよ。\n  2. high 優先から修正タスク化→PR。batch1\
+    \ で将軍QCゲート→OKで残り自走。\n  3. cmd_675 と並行ゆえ、在flightファイルとの衝突を避けて着手範囲を調整。\n\n■ 点検観点(網羅せよ・代表例)\n\
+    \  - 機能欠落/正典乖離: SDD・Figma正典に対し未実装/不整合の導線・項目。\n  - テスト不足: 重要導線(抽選/予約/認証/権限)の単体・Featureカバレッジ不足。\n\
+    \  - リファクタ: 重複コード・肥大コントローラ/Fatモデル・責務分離・命名・マジックナンバー。\n  - 一貫性: バリデーション規約・例外/エラーハンドリング・レスポンス形式・i18n。\n\
+    \  - セキュリティ: 認可と権限境界(hall_admin/super_admin)・入力検証・mass assignment・機微情報露出。\n  -\
+    \ パフォーマンス: N+1・不足索引・重いクエリ・キャッシュ余地。\n  - 衛生: デッドコード・未使用・TODO/暫定実装・放置 migration。\n\
+    \n■ マージ前提(発注者方針)\n  - 足軽は PR 作成(OPEN/レビュー可能)まで。マージは一切せず全て発注者の手に委ねる。\n  - 各PRのCI赤が自分起因か\
+    \ base起因(F-RSRV/PR#215前)かを切り分けて報告。\n\n■ 品質規律\n  - main/develop 直接不可触。force push\
+    \ は feature 限定 --force-with-lease(D003/D004)。\n  - PR/commit/コメントに内部用語混入ゼロ=実測grep。TVF徹底・捏造禁止・挙動変更は申告。\n"
+  project: line-raffle
+  priority: medium
+  status: in_progress
+- id: cmd_677
+  timestamp: '2026-06-03T01:15:00+09:00'
+  north_star: proteras LINE抽選システムを実需投入に耐える品質へ。発注者がマージを進める間、エージェント側は残る品質findings・backlog
+    を止めず前進させ、後工程の手戻りと障害リスクを継続的に下げる。
+  purpose: 発注者がPR#215→#218→他5本のマージを進めることでバッチ1ゲート承認とみなし、cmd_676 Phase2(残findings 29件相当)と残backlog(発注者裁定不要分)を自走で消化し、順次PR化する。発注者裁定が要る項目は着手せず可視化のみ行う。
+  acceptance_criteria:
+  - 'cmd_676 Phase2 を自走実行: 残findings(F-04所有権/F-23 tabletレート制限/F-24 passcodeハッシュ化/F-26・F-27・F-28
+    索引/F-01・F-02・F-03・F-05 機能/F-06〜F-19 テスト・一貫性/F-29・F-30 性能/F-31〜F-35 衛生)を優先度順にタスク化→PR化'
+  - high優先(F-04/F-23/F-24/F-02/F-26)を先頭batchで処理。security系は集中是正(Policy/スコープ横展開)を優先し散発abort_unlessを避ける
+  - '残backlog自走分を進める: GR-194〜198 omnibusの粒度整理/GR-177最終確認(#208マージ後)/GR-43最終棚卸し。各PRはOPEN/レビュー可能まで(マージは発注者)'
+  - '発注者裁定待ちでブロックの項目は着手せず dashboard に明示: GR-187整理券依存8項目のFigma照合(Z)・タブレットLG系Figma URL・PR#210の扱い(V)・RACE-001/PR#196
+    close→GR-184解錠(K)'
+  - 各PRのCI赤が自分起因かbase起因(F-RSRV/PR#215前)かを切り分けて報告。base緑化後はrebaseでCI緑を実測確認
+  - 全PR title/body/commit message・コメントに内部用語混入ゼロ=実測grep。main/develop 直接不可触・force pushはfeature限定--force-with-lease
+  command: "発注者がマージを進める(PR#215→#218→#212/213/214/216/217)。これをもって\ncmd_676 batch1 の将軍QCゲート=承認とみなし、Phase2\
+    \ を自走で進めてよい。\n発注者は「残る他アスクを確認して進めよ」と明示。止めずに前進させよ。\n\n■ 進め方(家老が分担・batch粒度を決定)\n\
+    \  1. cmd_676 Phase2: 残findings(`queue/reports/cmd_676_findings.md`)を優先度順に\n \
+    \    タスク化→PR化。high(F-04/F-23/F-24/F-02/F-26)先頭。security系は\n     軍師進言どおり Policy/グローバルスコープ横展開で集中是正(散発abort_unless回避)。\n\
+    \  2. 残backlog自走分: GR-194〜198 omnibusの粒度整理・GR-177最終確認(#208マージ後)・\n     GR-43最終棚卸し。\n\
+    \  3. base(develop)緑化はマージ進行に追従。各実装PRは緑化後にrebaseでCI緑を実測。\n\n■ ブロック項目(着手せず可視化のみ・発注者裁定待ち)\n\
+    \  - GR-187 整理券依存8項目が正典と一致するかFigma照合\n  - タブレット LG-01〜24 のFigma URL不在\n  - PR#210(競合生成物)の有効維持/close裁定\n\
+    \  - RACE-001 / PR#196(draft) close → GR-184解錠\n  これらは dashboard 要対応に集約し、発注者の判断を仰げ。勝手に実装/closeするな。\n\
+    \n■ マージ前提(発注者方針・不変)\n  - 足軽は PR 作成(OPEN/レビュー可能)まで。マージは一切せず全て発注者の手。\n  - リファクタPRは挙動不変+既存テスト緑維持(or不足テスト追加)。挙動変更はpurpose_gap申告。\n\
+    \n■ 品質規律\n  - main/develop 直接不可触。force push は feature 限定 --force-with-lease(D003/D004)。\n\
+    \  - PR/commit/コメントに内部用語混入ゼロ=実測grep。TVF徹底・捏造禁止(SKIP=FAIL)。\n"
+  project: line-raffle
+  priority: medium
+  status: in_progress
+- id: cmd_682
+  timestamp: '2026-06-03T13:15:00+09:00'
+  north_star: proteras LINE抽選システムのタブレット(来店者識別/受付)を、発注者が確定した新正典 Figma xDQ4U に一致させる。旧z7Uqベース実装と新正典の乖離(顔写真選択フロー欠落・抽選番号表示の方式差)を解消し、運用フローを設計意図どおりにする。
+  purpose: 発注者裁定により、タブレットの正典を z7Uq → xDQ4U(node 4560-89033 系)へ正式切替する。cmd_678-Cで確定した乖離2件(D-1
+    顔写真選択フロー未実装 / D-2 抽選番号表示の方式差)を、新正典に沿って解消する。規模が大きいため、まず精査→計画→戦略レビュー→発注者可視化→実装の段取りで進める。
+  acceptance_criteria:
+  - '正典系統の更新を記録: タブレット正典=xDQ4U(node 4560-89033 系)へ切替を docs/SDD・該当箇所に反映(旧z7Uq裁定D-1の上書きを明記)。z7Uqは参照外/履歴扱い'
+  - 'Phase0(精査・計画): 新正典 xDQ4U(4560-89033 系の全タブレット画面)を48h以内取得証跡付きで読取り、既存実装(routes/tablet.php・TabletEntryController・views/tablet・PR#205/206系)との差分を画面単位で網羅。是正タスク群(顔写真選択フロー新規実装・抽選番号表示の作り直し等)を優先度×工数×根拠で計画化し、軍師戦略レビューを通す。計画を
+    dashboard で発注者可視化'
+  - 'Phase1以降(実装): 計画に沿って 1タスク=1 feature ブランチ→PR(OPEN/レビュー可・マージは発注者)。batch1完了で将軍QCゲート→OKで残り自走。Figma正典準拠を証跡付きで担保(捏造禁止・SKIP=FAIL)'
+  - 'D-1 顔写真選択フロー: 新正典の挿入位置(トップ reception →[顔写真選択]→参番号確認 complete)どおりにルート/コントローラ/ビュー/テストを新設'
+  - 'D-2 抽選番号表示: 新正典(顔写真付き参加者リスト形式)へ表示方式を作り直し。旧(数字グリッド→本番号モーダル)からの移行で既存機能を退行させない'
+  - 全PR title/body/commit・コメントに内部用語混入ゼロ=実測grep。main/develop直接不可触・force pushはfeature限定--force-with-lease。マージは全件発注者
+  command: "発注者裁定: タブレットの正典を z7Uq → xDQ4U(node 4560-89033 系)へ切り替える。\ncmd_678-Cで確定した乖離2件を新正典に沿って解消せよ。規模大ゆえ段取りを踏む。\n\
+    \n■ Phase0: 精査・計画(まずここ。実装前に発注者可視化)\n  1. 新正典 xDQ4U 4560-89033 系の全タブレット画面を読取り(48h以内取得証跡)。\n\
+    \  2. 既存実装(routes/tablet.php・TabletEntryController・views/tablet・PR#205/206系・\n\
+    \     handoff-guide「未実装#8 来店者識別方式」)との差分を画面単位で網羅。\n  3. 是正タスク群を優先度×工数×根拠で計画化 →\
+    \ 軍師戦略レビュー → dashboard で\n     発注者へ計画提示(着工順・概算工数・PR分割)。\n\n■ 乖離(cmd_678-C 確定)\n\
+    \  - D-1: 新正典に「顔写真選択フロー」が複数画面で定義されるが既存実装に当該フロー無し。\n    挿入位置=トップ(reception)→[顔写真選択]→参番号確認(complete)の間。\n\
+    \  - D-2: 抽選番号表示が、新正典=顔写真付き参加者リスト形式 vs 既存=数字グリッド→本番号\n    モーダル。表示方式の作り直しが必要。\n\
+    \n■ Phase1以降: 実装(計画承認後)\n  - 1タスク=1 featureブランチ→PR。batch1で将軍QCゲート→OKで自走。\n  -\
+    \ 新正典準拠を証跡付きで担保。既存機能を退行させない。\n\n■ 記録\n  - タブレット正典=xDQ4U へ切替を docs/SDD 該当箇所に反映(旧z7Uq裁定D-1上書き明記)。\n\
+    \n■ 品質規律\n  - main/develop直接不可触。force pushはfeature限定--force-with-lease(D003/D004)。\n\
+    \  - 内部用語混入ゼロ=実測grep。TVF徹底・捏造禁止(SKIP=FAIL)。マージは全件発注者。\n"
+  project: line-raffle
+  priority: high
+  status: in_progress
+- id: cmd_705
+  timestamp: '2026-06-03T23:17:17+09:00'
+  revised: 2026-06-03T23:17 将軍が確定アーキへ全面改訂。PoC(将軍/Copilot agmsg直結実証)で「turnモードはidle
+    Copilotを起こせぬ」が確定したため、agmsg版の「次ターンで受信」前提を破棄し『watcherがcopilot --yolo -pで都度spawn』へ。install手順のcurl|bash(D008)も安全手順へ是正。e59063a中立化/F006/F007を追加。
+  north_star: Copilot足軽の戦力化はトークン分散の要。実績あるagmsgを通信層に使いつつ、起床問題は『idle体を起こす』でなく『都度spawn』で構造的に消し、将軍・家老が殿の手を煩わせず安心してオフロードできる土台を作る。
+  purpose: ashigaru_copilotへの委譲が自動着手に至らぬ根本原因を、PoCで確定したアーキ（watcherがagmsg inbox/task更新を検知→copilot
+    --yolo -pで新規ターンをspawn→完走→agmsgで報告）へ作り替えて解消し、委譲→自動着手→完了報告のループを閉じる。agmsgは通信・報告層として用いる。
+  acceptance_criteria:
+  - 'agmsg導入済の確認: ~/.agents/skills/agmsg/（Claude側）と ~/.copilot/skills/agmsg/（Copilot側）、team「shogun」に
+    copilot(copilot)・shogun(claude-code) 参加済（PoCで確認済・現状追認）。Karo/Gunshiもteam「shogun」へ参加させる'
+  - assign_to_copilot.sh から tmux send-keys 起床コードを除去する（tmux外Copilotには原理的に不達）
+  - '★中核★ scripts/copilot_watcher.sh 新設: agmsg inbox または queue/tasks/ashigaru_copilot.yaml
+    の更新を検知 → copilot --yolo -p ''<task全文>'' で新規ワンショットターンをspawn → 完走後に agmsg send.sh
+    で gunshi/karo へ報告。while常駐・PIDファイルで二重起動防止・プロセス死亡時自動復活。※turnモードはidleのCopilotを起こせぬとPoCで確定したため「次ターン受信」依存は採らない'
+  - copilot --yolo -p はステートレスゆえ spawn文字列にタスク文脈を完全自己完結させること（task YAML全文渡し）。1 spawn=premium
+    request 1消費を踏まえ重め/独立タスクに限定する設計とする
+  - inbox_watcher の ashigaru_copilot 誤宛（multiagent:agents.7=足軽7pane）を是正/廃止し、足軽7への空nudge副作用を止める（本アーキではtmux
+    nudge不要）
+  - shutsujin_departure.sh が Copilot を tmuxグリッド外として扱い pane数算出に混入しないことを確認（lib/cli_adapter.sh
+    get_ashigaru_ids 数値フィルタ維持）。★tmux paneをCopilotへ割当てると出陣がコケる既知事象あり→Copilotは必ずtmux外運用が前提★
+  - agmsgインストール手順は bash<(curl…)=D008(pipe-to-shell)厳禁。clone→精読→検証済の安全手順を用いる（既に導入済なら追認でよい）
+  - '安全ゲート維持: --yoloは承認ガード全外し＝フック非適用ゆえ、破壊操作(D001-D008)・内部用語0・Figma48h証跡は assign_to_copilot.sh
+    側ゲート(cmd_704b)と家老の人手で担保する'
+  - '後始末: 既push済 commit e59063a の commit message に内部用語(cmd_705)混入。feature ブランチ限定で
+    amend/rebase + --force-with-lease により中立化（main/develop は絶対に触れぬ）'
+  - 'F006厳守: instructions/generated/* は生成物。直接編集禁止。Copilot協業docを足すならソーステンプレ側へ入れ scripts/build_instructions.sh
+    再生成→git diff --exit-code instructions/generated/ が通ること'
+  - 'エンドツーエンド実証: テストタスクを委譲し、殿が手を触れずに Copilot が spawn着手→完走→agmsg報告まで到達すること'
+  - 軍師が方式レビューし承認。commit/PRは内部用語0・破壊操作禁止・稼働セッションkill禁止(D006)・pushは殿の明示承認後(F007)
+  command: 'Copilot足軽の自律委譲を、PoCで確定したアーキへ作り替えて完成させよ。
+
+
+    背景（PoC実証で確定・2026-06-03 将軍/Copilot agmsg直結検証）:
+
+    - agmsg(fujibee/agmsg・SQLite共有DB・tmux非依存)導入で Copilot→将軍(monitor)はpush自動受信が成立。
+
+    - だが turnモードは能動時のみinbox確認＝★idleのCopilotは自力起床せぬ★（将軍→idle Copilotは不達）。
+
+    - 一方 `copilot --yolo -p ''<task>''` 非対話ワンショットは完走実証済（終了コード0・約12s）。
+
+    - ★ゆえに正解は『idle体を起こす』でなく『watcher→copilot -p で新規ターンを都度spawn』。これで起床問題が構造ごと消滅する。★
+
+
+    実装:
+
+    1. assign_to_copilot.sh から tmux send-keys 起床を削除
+
+    2. scripts/copilot_watcher.sh 新設(中核): agmsg inbox または queue/tasks/ashigaru_copilot.yaml
+    の更新検知 → copilot --yolo -p ''<task全文>'' でspawn → 完走後 agmsg send.sh で報告。while常駐・PIDファイル二重起動防止・自動復活
+
+    3. inbox_watcher の ashigaru_copilot 誤宛(agents.7)を是正/廃止（tmux nudge不要化）
+
+    4. agmsg を通信・報告層として組込（install は curl|bash 禁止＝安全手順／既存導入は追認）。Karo/Gunshi を team「shogun」へ参加
+
+    5. get_ashigaru_ids の数値フィルタ維持確認（Copilotはtmuxグリッド外前提・出陣がCopilot pane割当で壊れぬこと）
+
+    6. 後始末: 既push commit e59063a の内部用語(cmd_705)を feature限定 amend+force-with-lease
+    で中立化（main/develop不可）
+
+    7. F006: instructions/generated/* 直編集禁止。テンプレ経由→build_instructions.sh再生成→diffゼロ
+
+
+    運用留意: copilot -p はステートレス(task文に文脈完結)/1spawn=premium 1課金(乱発回避)/--yoloはガード全外しゆえ安全はassigner側ゲート+人手で担保。
+
+
+    検証: テストタスク委譲→殿が手を触れずCopilotがspawn着手→完走→agmsg報告まで実証。
+
+    規律: 軍師に方式レビュー依頼。commit/PRは内部用語0・破壊操作禁止・D006・pushは殿承認後(F007)。
+
+    '
+  project: line-raffle
+  priority: high
+  status: in_progress
+- id: cmd_706
+  timestamp: '2026-06-03T23:38:00+09:00'
+  north_star: 発注者が就寝/外出で不在の間も、フリート(家老・足軽・軍師・Copilot)が自走して在庫タスクを完遂し、発注者の裁定が要る項目のみ通知して待つ「無人運転」体制を確立する。これが発注者の本望＝手離れの要。
+  purpose: 家老の停止(単一司令塔＋脆弱な起床通知＋自己復帰機構の不在)を解消し、フリートが停止から自己回復して在庫タスクを無人で消化できるようにする。発注者裁定が要る項目は自動進行せず通知して待機させる。
+  acceptance_criteria:
+  - '★中核★ フリート番犬(scripts/fleet_watchdog.sh 等)を新設: 純shell実装(LLM呼出なし=トークン消費ゼロ・既存 idle_auto_clear/action_required_notifier
+    と同型ゆえ F004 非該当)。『仕事がpending(完了report未回収/idle足軽+在庫cmd or pending.yaml/未読inbox滞留)なのに家老がidle』を周期検知→家老へ再nudge(Enter再送付き)。家老が在flight作業中は介入せぬ(誤clear/二重起床防止)'
+  - watcher_supervisor の off-by-one レジストリを実レイアウト(karo→agents.0 / ashigaru N→agents.N
+    / gunshi→agents.8 / shogun→shogun:main)へ整合し、迷子watcher(例 karo→agents.8)の量産を停止する。整合が取れるまでは
+    supervisor を起動しない(誤起動による再量産防止)
+  - 'nudge配信の Enter取りこぼし対策: send-keys の text/Enter 分離・到達確認 or 再送ロジックを入れ、文字だけ入って未送信で家老が固まる事象を断つ'
+  - '★karo の /clear 自家中毒を断つ★: inbox_watcher の4分エスカレーション(/clear送信・ESCALATE_PHASE2=240)が、長ターン(dashboard+全report読みで12分超)の司令塔karoを「無応答」と誤判定して
+    /clear し文脈を吹き飛ばす悪循環を是正。対策=(a)karoのwatcherは escalation /clear を無効化(ASW_DISABLE_ESCALATION=1相当)または『busy(pane
+    spinner稼働中)とstuck(無応答)を区別』して busy中は /clear せぬ (b)karoの毎ターン token を削減=dashboard
+    46kをスリム化+karoが毎回全文を読み直さぬ運用。回復は番犬(①)に委ね、watcherの自動/clearに頼らぬ'
+  - 発注者裁定が要る項目(PRマージ・Figma正典裁定・曖昧backlogの方針)は自動進行させず dashboard 要対応＋ntfy push に積んで待つ(action_required_notifier
+    を維持/再構築)。それ以外(実装/テスト/PR化/調査/doc)は家老が無人で配賦を継続する
+  - 'E2E実証: 家老を意図的にidle放置→番犬が在庫を検知→家老を再起動→配賦再開、を実地で確認する'
+  - 軍師が方式レビューし承認。番犬/supervisor是正スクリプトの kill 対象は厳密限定(D006境界)。内部用語0・破壊操作はTier制約遵守・push
+    は発注者承認後(F007)。cmd_705(Copilot自律)の copilot_watcher と役割が衝突しないこと
+  command: "発注者不在でもフリートが自走し在庫を完遂する「無人運転」体制を作れ。家老停止の根治が要。\n\n背景(将軍診断・2026-06-03):\n\
+    家老は「配賦したら停止しnudgeで起こされるまで寝る」イベント駆動の単一司令塔。\n起こし損ねが一度でも起きると自力復帰できず永久に寝る＝全軍停止。実因3つ:\n\
+    \  ①watcher二重化/誤配(supervisor off-by-one。karo→agents.0正規 + karo→agents.8迷子。幻inboxを撒き本物nudgeを取り逃す)\n\
+    \  ②nudgeのEnter取りこぼし(文字は入るが未送信で家老が固まる)\n  ③自己復帰機構の不在(F004ゆえ家老は自分で仕事溜まりを見に行けぬ・nudge頼みの一本足)\n\
+    \n実装(進め方・分担は家老が決定。軍師レビュー必須):\n1. ★フリート番犬 fleet_watchdog.sh 新設(中核)★: 純shell・トークン0。周期(例30-60s)で『家老idle\
+    \ かつ 仕事pending(完了report未回収 / idle足軽+在庫cmd or pending.yaml / 未読inbox滞留)』を検知したら家老を再nudge(Enter再送)。家老が在flight中は介入せぬ。\n\
+    2. watcher_supervisor のレジストリを実レイアウトへ整合し迷子watcher量産を停止。整合まで supervisor 不起動。\n3.\
+    \ nudgeのEnter取りこぼし対策(text/Enter分離・再送/到達確認)。\n4. 発注者裁定項目(マージ/Figma裁定/曖昧backlog方針)は自動進行せず\
+    \ dashboard要対応+ntfy pushへ。実装/テスト/PR化/調査/docは無人で配賦継続。\n5. action_required_notifier\
+    \ を維持/再構築し、裁定待ち項目を発注者スマホへ確実にpush。\n\n検証: 家老を意図的にidle放置→番犬が在庫検知→家老再起動→配賦再開のE2Eを実証。\n\
+    規律: 軍師に方式レビュー依頼。kill対象は厳密限定(D006)・内部用語0・破壊操作Tier遵守・pushは発注者承認後(F007)。cmd_705のcopilot_watcherと役割衝突せぬこと。\n"
+  project: line-raffle
+  priority: high
+  status: pending
+- id: cmd_707
+  timestamp: '2026-06-04T10:59:30+09:00'
+  north_star: Figma正典からの乖離実装(PR#210/#193の退行と同種)を、Copilotを含む全エージェント及び人手の push/PR で確実に防ぐ。Figmaギャップ回収フェーズの品質ゲートを「Claude専用フック」依存の抜け穴から「エージェント非依存の関所」へ格上げするのが要。
+  purpose: figma-fresh-fetch-guard(48h以内のFigma取得証跡を要求しFigma準拠UI変更のpush/PRをブロックする品質ゲート)が、現状
+    Claude Code の PreToolUse フック専用ゆえ Copilot/Codex/人手ではすり抜ける穴を塞ぐ。エージェント種別に依存せず証跡ガードが効くようにする。
+  acceptance_criteria:
+  - 'Figma準拠UI変更を含む push/PR に対し、エージェント種別(Claude/Copilot/Codex/人手)に依存せず48h以内のFigma取得証跡を要求しブロックする仕組みを実装する(例:
+    core.hooksPath でtracked化した git pre-push フック、または共通の push/gh ラッパ。最適方式は軍師レビューで選定)'
+  - Copilotへの委譲経路(assign_to_copilot.sh)でも、Figma関連タスクは48h証跡の確認＋正典ノード/URLの task への embed
+    を義務化する(cmd_704b assigner安全ゲートの拡張)。これによりCopilotは自前Figma取得をせず、配賦時点で証跡が担保される
+  - 証跡なしのFigma-UI push/PR が実際にブロック(または明示警告)されることを、Copilot経路と人手経路の双方で実証する
+  - 既存の Claude PreToolUse 版 figma-fresh-fetch-guard と新関所が二重発火/矛盾せぬよう整理し、責務を明文化する(どちらが正面ゲートか)
+  - bypass(git push --no-verify 等)の濫用注意と、迂回時の検知/記録方針を明記する
+  - 軍師が方式レビューし承認。内部用語0・破壊操作はTier制約遵守(D001-D008)・pushは発注者承認後(F007)・既存フックやhooksPath変更は他リポ運用を壊さぬよう後方互換確認
+  command: "Figma 48h証跡ガードを『Claude専用フック依存』から『エージェント非依存の関所』へ格上げし、Copilot/Codex/人手の抜け穴を塞げ。\n\
+    \n背景(将軍診断・2026-06-04):\nfigma-fresh-fetch-guard は Claude Code の PreToolUse フックで\
+    \ gh pr create をブロックする実装ゆえ、\nフック非適用の Copilot(--yolo)・Codex・人手では証跡なしでもFigma-UIをpush/PRできてしまう。\n\
+    これは旧デザイン起こしの誤実装(PR#210/#193退行)と同系統のリスクの再発路。\n\n実装方針(細部・最適方式は家老/軍師が決定):\n- 本命B=エージェント非依存の\
+    \ git pre-push フック(core.hooksPath でtracked化)または共通push/ghラッパで、\n  Figma対応ファイル(view/blade/UI等・canonical-mapで対応付け)を含むpushに48h証跡を要求しブロック。\n\
+    - 併用A=assign_to_copilot.sh のFigmaタスク委譲ゲート: 48h証跡確認+正典ノード/URLをtaskにembed\n  (Copilotは自前Figma取得不要・配賦時点で証跡担保)。cmd_704b\
+    \ assignerゲートの拡張。\n- 既存Claude PreToolUse版との責務整理(二重発火回避・どちらが正面ゲートか明文化)。\n- bypass(--no-verify)濫用注意・迂回検知方針を明記。\n\
+    \n検証: 証跡なしのFigma-UI pushを Copilot経路と人手経路で試し、実際にブロック/警告されることを実証。\n規律: 軍師に方式レビュー依頼。内部用語0・破壊操作Tier遵守・pushは発注者承認後(F007)・hooksPath等の変更は後方互換確認。\n"
+  project: line-raffle
+  priority: high
+  status: pending
+- id: cmd_708
+  timestamp: '2026-06-04T12:08:51+09:00'
+  north_star: ホール向け管理画面の重複した『ホール管理』と『管理者アカウント管理』を、ホール運営者(hall_admin)視点に合わせて1つに整理し、ホールさんが迷わず自分のアカウント/ホールを管理できるようにする。
+  purpose: hall_admin の管理画面で重複する2視点(『ホール管理』=自ホール管理視点 / 『管理者アカウント管理』=自分自身の管理視点)を整理する。発注者裁定=(1)hall_adminでは『管理者アカウント管理』メニューを非表示
+    (2)ホール側アカウントから見る時は『ホール管理』→『アカウント管理』に名称変更。docs(SDD/管理画面仕様)とbackendの双方を更新する。
+  acceptance_criteria:
+  - 'Phase A(調査・確認/着手前): 現行の『ホール管理(ホール詳細)』と『管理者アカウント管理』各画面の表示項目・操作(フィールド/機能/ルート/コントローラ)とロール別メニュー表示ロジックをTVFで洗い出し、突合表をreportに残す。Figma正典(xDQ4U・48h証跡)とも照合'
+  - 'Phase A: ★非表示にする『管理者アカウント管理』に固有の自分自身の管理機能(例: ログインメール変更・パスワード変更等)が hall_admin
+    に必要か判定し、必要なら rename後の『アカウント管理』画面へ取り込む案を作る★。統合後『アカウント管理』に出すべき表示項目セットを提案し、発注者(将軍経由)の確認を得てから
+    Phase B 実装に進む'
+  - 'Phase B(実装): hall_admin のメニューから『管理者アカウント管理』を非表示にする(super_admin等他ロールの表示は変えない=ロール別制御)。ホール側アカウント視点のメニュー名称を『ホール管理』→『アカウント管理』へ変更。Phase
+    Aで確定した表示項目に統合する'
+  - docs(SDD/管理画面仕様・該当doc)を新仕様(メニュー構成・名称・ロール別表示・表示項目)へ更新する
+  - 'ロール別表示の退行防止: super_admin/他ロールのメニュー・画面が影響を受けないことをテストで担保。hall_admin視点の名称・非表示が正しく出ることを確認'
+  - Figma準拠UIゆえ xDQ4U の48h証跡を取り直してから着手。軍師レビュー。内部用語0・破壊操作禁止・pushは発注者承認後(F007)。PRはOPEN/レビュー可まで
+  command: 'ホール向け管理画面の重複2視点を hall_admin に合わせて整理せよ(docs+backend)。
+
+
+    発注者の確定事項:
+
+    - hall_admin(ホールさん=店舗運営者)には『ホール管理』(自ホール管理)と『管理者アカウント管理』(自分自身の管理)が並ぶが重複。
+
+    - ★(1)hall_admin では『管理者アカウント管理』メニューを非表示にする★
+
+    - ★(2)ホール側アカウントから見る時は『ホール管理』→『アカウント管理』に名称変更する★
+
+
+    進め方(TVF・確認ゲート付き):
+
+    1. Phase A(調査): 両画面(ホール詳細/管理者アカウント管理)の表示項目・機能・ルート・ロール別メニュー表示ロジックを洗い出し、Figma正典(xDQ4U)とも突合。★非表示化で
+    hall_admin が自分自身の管理機能(ログインメール/パスワード変更等)を失わぬか判定し、必要なら rename後『アカウント管理』へ取り込む案を作る★。統合後の表示項目セットを提案→将軍経由で発注者確認を得る。
+
+    2. Phase B(実装): 確認後、(1)非表示(ロール別制御・他ロール不変) (2)名称変更 (3)表示項目統合 を実装。docs(管理画面仕様)も更新。
+
+    3. 退行防止: super_admin等のメニュー/画面不変をテストで担保。
+
+
+    規律: Figma準拠ゆえxDQ4U 48h証跡を取り直す。軍師レビュー。内部用語0・push F007・PRはOPENまで。
+
+    '
+  project: line-raffle
+  priority: high
+  status: pending
+- id: cmd_713
+  timestamp: '2026-06-05T10:40:00+09:00'
+  north_star: 「ユーザー詳細画面は廃止」という従前認識は standalone /users/{id}(USER-10)のみが対象で、顔写真チェック文脈のユーザー詳細・編集画面群は正典xDQ4Uに再定義され実装対象であることを確定し、当該画面群を正典準拠で実装する。顔類似/顔写真チェック運用(LINE抽選の不正対策中核)の管理画面を実需に届ける。
+  purpose: 発注者が示したLINEユーザー管理「顔写真チェック」起点のユーザー詳細・編集画面群(Figma xDQ4U・4560:57288 顔写真チェックmain
+    / 4560:55842 ユーザー詳細_編集 ＋周辺cluster)を、(1)Figma実態をTVF確認 (2)develop実装との差分を特定 (3)Backlogチケット化(担当=斎藤)
+    (4)順次実装(PR OPEN) する。併せてcanonical-mapの『ユーザー詳細=廃止』記述を『廃止は standalone /users/{id}(USER-10)のみ・顔写真チェック系ユーザー詳細は実装対象』に明確化する。
+  acceptance_criteria:
+  - 'TVF確認: 顔写真チェックcluster(4560:57288 main/4560:57004 hover/4560:56715 タグ押下後/4560:56417
+    店舗選択/4560:56104 絞り込み/4560:55842 ユーザー詳細_編集/4560:55569 不要チェック時/4560:55306 トースト)をFigma実取得(48h証跡)し、各画面の表示項目・操作・状態遷移を洗い出す。standalone
+    /users/{id}(USER-10・廃止)とは別物であることを明記'
+  - 'gap特定: 上記clusterとdevelop実装(users/index・users/show・在flight #287 GR-217顔写真hover/#289
+    GR-219ユーザー詳細UI改善 等)を突合し、実装済/部分/未実装を画面・項目単位で台帳化。#287/#289が既にカバーする分は二重実装しない(RACE-001=users系blade同時編集回避・在flightマージ後rebase)'
+  - 'Backlogチケット化: 未実装/差分を LINELOT_GR(grander.backlog.jp・プロジェクト185335)にチケット起票。★担当者=斎藤(user
+    583192)★。各チケット概要に対応Figmaノード ID + URL を必須記載(cmd_685標準・正典xDQ4U)。粒度は画面/機能単位で実装が回せる単位に'
+  - 'canonical-map更新: context/figma-canonical-map.md の『Standalone User Detail Page
+    /users/{id} DEPRECATED』節と『Admin User Management User Detail/Edit(4560:55306)』節を整理し、★(a)廃止=standalone
+    /users/{id}(USER-10)のみ (b)顔写真チェック系ユーザー詳細・編集(4560:57288/55842 cluster)=active・実装対象★
+    を明確化(将来の混同・誤skip防止)'
+  - '順次実装: チケット/画面単位で feature ブランチ→PR OPEN(レビュー可)まで。develop/mainマージは発注者専任。在flight
+    #287/#289とdedup(同一users blade同時Open禁止・マージ後rebase)。Figma準拠UIゆえ48h証跡+完了後Claude忠実性照合(Copilot配賦時)。E2E/UI確認はDusk(Playwright禁止)'
+  - 各完了→軍師QC(gh run conclusion=success実測・偽green警戒)→dashboard更新。内部用語0(PR/commit/SDD/チケット)・破壊操作D001-D008・secrets不扱い
+  command: 'LINEユーザー管理「顔写真チェック」起点のユーザー詳細・編集画面群を確認→チケット化(担当=斎藤)→順次実装せよ。
+
+
+    ■背景(発注者2026-06-05): 『ユーザー詳細画面は廃止』は standalone /users/{id}(USER-10)のみ。顔写真チェック文脈のユーザー詳細は正典xDQ4Uに★再定義され実装対象★。発注者提示=4560:57288(顔写真チェックmain)・4560:55842(顔写真チェック_ユーザー詳細_編集)。
+
+
+    ■対象cluster(canonical-map G-07節 既同定): 4560:57288/57004/56715/56417/56104/55842/55569/55306(=トースト・既掲載分)。LINEユーザー管理
+    section 4560:55305配下。
+
+
+    ■手順
+
+    1. TVF確認: cluster各nodeをFigma実取得(48h証跡)。表示項目/操作/状態遷移を洗う。USER-10廃止との別物性を明記。
+
+    2. gap特定: develop(users/index・show・在flight #287 GR-217/#289 GR-219)と突合→実装済/部分/未実装を台帳化。#287/#289カバー分は二重実装せず(RACE回避・マージ後rebase)。
+
+    3. Backlogチケット化: 未実装/差分を LINELOT_GR(grander.backlog.jp)に起票。★担当=斎藤(user 583192)★。概要に対応Figmaノード+URL必須(cmd_685標準)。画面/機能単位の粒度。
+
+    4. canonical-map更新: 『廃止=standalone /users/{id}のみ・顔写真チェック系ユーザー詳細(57288/55842)=active実装対象』を明確化。
+
+    5. 順次実装: チケット単位で feature→PR OPEN。develop/mainマージは発注者専任。
+
+
+    ■規律: Figma48h証跡・完了後Claude忠実性照合(Copilot分)・UI確認Dusk(Playwright禁止)・E2E家老・内部用語0・D001-D008・gunshi
+    QC(gh実測)。在flight #287/#289とdedup厳守。
+
+    '
+  project: line-raffle
+  priority: high
+  status: in_progress
+- id: cmd_716
+  timestamp: '2026-06-05T12:20:00+09:00'
+  north_star: 整理券管理（抽選状況）配下の「顔写真チェック」画面は発注者が必要と明言した実機能。現行正典xDQ4Uに忠実に実装し、不正参加対策(顔類似/顔写真チェック)の管理運用を実需に届ける。PR#277(捏造証跡・参照node不一致でclose)の二の舞を避け、証跡実在と機能-node一致を厳格に担保する。
+  purpose: 整理券管理（抽選状況）系「顔写真チェック」画面群(Figma xDQ4U・4560:47251 顔写真チェックmain / 4560:46982
+    顔写真チェック_ユーザー詳細・編集 / 4560:48032 ユーザー詳細モーダル ＋canonical-mapの当該cluster)を、(1)Figma実態をTVF確認
+    (2)develop実装との差分特定 (3)Backlogチケット化(担当=斎藤・Figmaノード+URL必須) (4)順次実装(PR OPEN)する。★PR#277が実装した「再抽選/再送信/リセット3ボタン」は現行正典に該当nodeが無く(参照された4560:46982は顔写真チェック画面で別物)closeした=本cmdで再実装しない。実装するのは顔写真チェック画面そのもの★。
+  acceptance_criteria:
+  - 'TVF確認(2段判定・厳格): 対象cluster(4560:47251 main/4560:46982 ユーザー詳細編集/4560:48032 ユーザー詳細モーダル・canonical-mapの整理券管理抽選状況系顔写真チェックを網羅)をFigma実取得(48h証跡)。★(1)各nodeが現行正典(4560系20260527)か検証
+    (2)実装する各機能/項目/ボタンがそのnode内容に実在するか照合★。cmd_713(LINEユーザー管理_顔写真チェック 4560:57288/55842)とは別コンテキスト(整理券管理/抽選状況)ゆえ区別し、共通UIコンポーネントは重複実装回避でkaro調整'
+  - '★証跡の実在を必須化(PR#277=捏造証跡の再発防止)★: Figma証跡ファイルは実際にブランチへコミットし実在させる。軍師QCは(a)証跡ファイルが実在するか(b)PR本文の参照nodeが実装機能と一致するか
+    を必ず検証。証跡ファイル不在/node-機能不一致は重大違反(F005相当)として差し戻し。参照されたnode番号と実装の乖離を見逃さない'
+  - 'gap特定: clusterとdevelop実装(raffles/show・整理券管理抽選状況系blade・既存顔写真チェック関連)を突合し実装済/部分/未実装を画面・項目単位で台帳化。在flight
+    #274(整理券一覧account化)等とdedup(同一blade同時Open回避・マージ後rebase)'
+  - 'Backlogチケット化: 未実装/差分を LINELOT_GR(grander.backlog.jp・185335)に起票。担当=斎藤(user 583192・cmd_713と整合)。各概要に対応Figmaノード+URL必須(cmd_685標準・正典xDQ4U)。画面/機能単位の粒度'
+  - '順次実装: チケット単位で feature→PR OPEN(レビュー可)まで。develop/mainマージは発注者専任。Copilot配賦可(発注者許可)だが①cmd_707の48h証跡ガード②完了後Claude足軽がxDQ4U忠実性照合(項目/ボタン/レイアウト)③gh権威CI実測後受容。secrets/外部API無し前提'
+  - 各完了→軍師QC(gh run conclusion=success実測・偽green/捏造証跡/スコープ逸脱警戒)→dashboard更新。内部用語0・UI確認Dusk(Playwright禁止)・E2E家老・D001-D008
+  command: '整理券管理（抽選状況）系「顔写真チェック」画面群を正典準拠で確認→チケット化(担当=斎藤)→順次実装せよ。発注者明言=この画面は必要機能。
+
+
+    ■背景: PR#277(B-RSRV-001 再抽選/再送信/リセット3ボタン)は★参照node 4560:46982(顔写真チェック_ユーザー詳細編集)と実装が不一致・証跡ファイル不在=捏造疑い★でclose。発注者「捏造は重罪」。本cmdで実装するのは★顔写真チェック画面そのもの★(3ボタンは現行正典に根拠なし=再実装しない)。
+
+
+    ■対象cluster(canonical-map): 4560:47251(顔写真チェックmain)・4560:46982(顔写真チェック_ユーザー詳細・編集)・4560:48032(ユーザー詳細モーダル)＋当該整理券管理抽選状況系の顔写真チェックnodeを網羅。
+
+    ■注意: cmd_713は別コンテキスト(LINEユーザー管理_顔写真チェック 4560:57288/55842)。本cmdは整理券管理(抽選状況)系。区別し共通UIは重複回避でkaro調整。
+
+
+    ■手順
+
+    1. TVF(2段・厳格): cluster各nodeをFigma実取得(48h証跡を実ファイルでコミット)。(1)node現行性検証(2)実装機能がnode内容に実在するか照合。
+
+    2. gap特定: develop(raffles/show・抽選状況系blade・既存顔写真チェック)と突合→台帳化。在flight #274等とdedup。
+
+    3. チケット化: 未実装/差分を LINELOT_GR に起票・担当=斎藤・概要にFigmaノード+URL必須。
+
+    4. 順次実装: チケット単位 feature→PR OPEN。Copilot可(48h証跡ガード+完了後Claude忠実性照合+gh CI実測)。
+
+
+    ■★捏造防止(厳命)★
+
+    - Figma証跡ファイルは実在させてコミット。軍師QCで(a)証跡実在(b)参照node=実装機能の一致 を必ず検証。不在/不一致は重大違反(F005相当)で差し戻し。
+
+    - 規律: develop/mainマージは発注者専任・内部用語0・UI確認Dusk・E2E家老・D001-D008・gh権威CI実測後受容。
+
+    '
+  project: line-raffle
+  priority: high
+  status: in_progress
+- id: cmd_718
+  timestamp: '2026-06-05T13:30:00+09:00'
+  north_star: 整理券管理（抽選予約）画面の編集ボタン等が現行正典Figmaと乖離している。整理券管理クラスタ全体を正典と忠実性照合し、差分をBacklogチケットに整理してCopilotで実装し、整理券管理UIを正典準拠に揃える。捏造/旧node混入(GR-198の轍)を避け、現行node×内容一致を厳守する。
+  purpose: 発注者が指摘した整理券管理（抽選予約）編集画面のFigma乖離(編集ボタン等の中身差)を起点に、整理券 section(4560:43044)配下の整理券管理クラスタ(抽選予約一覧4560:46699/編集46414/編集_日時入力46115/編集_予約枠削除45820、基本設定・固定文言45626系、抽選番号デザインフレーム43342系
+    等の周辺node)を現行正典xDQ4Uと忠実性照合し、(1)差分を網羅的にまとめ (2)差分ごとにBacklogチケット化(Figmaノード+URL必須)
+    (3)Copilotへ実装割振り する。
+  acceptance_criteria:
+  - 'TVF忠実性照合(2段・厳格): 起点=4560:46699(抽選予約一覧)/4560:46414(編集)。周辺=46115/45820(編集系)、基本設定固定文言45626/45419系、抽選番号フレーム43342系
+    等 整理券 section(4560:43044)配下を canonical-map で列挙しFigma実取得(48h・実証跡コミット)。★(1)各nodeが現行正典(4560系20260527)か
+    (2)develop実装(raffles/create・raffle-reservations/_form-*・raffle-settings・frame-patterns
+    等の編集ボタン/項目/ラベル/モーダル)がnode内容と一致するか★を画面・要素単位で照合。差分を『対象画面/node/develop現状/Figma正/差分内容/規模』の台帳に'
+  - 'Backlogチケット化: 差分ごとに LINELOT_GR(grander.backlog.jp・185335)へ起票。担当=斎藤(user 583192)。各概要に対応Figmaノード+URL必須(cmd_685標準)。Copilotが1チケット=1単位で実装できる粒度(独立性・対象ファイル明示)'
+  - 'Cop​ilot実装割振り: チケットを assign_to_copilot.sh で配賦(karo単一窓口・dedup厳守)。★Figma準拠UIゆえ(a)cmd_717/707の証跡ガードを実証跡同梱で緑通過(捏造NG)(b)完了後Claude足軽がxDQ4U忠実性照合(項目/ボタン/ラベル/レイアウト=CI緑≠Figma準拠)(c)gh権威CI実測後受容★。secrets/外部API無し前提'
+  - 'RACE/重複回避: ★cmd_712(G-05 フレームパターン枠ごと指定=同じ抽選予約編集46699/46414・G-08 ハズレ券)と対象が重なる→karoが単一の整合した作業計画に統合し、同一blade(raffles/create・raffle-reservations/_form-*)へ複数PRが同時に走らぬよう直列化/担当一本化★。在flight
+    #274(整理券一覧account化)ともdedup(マージ後rebase)'
+  - 各完了→軍師QC(gh run conclusion=success実測・偽green/捏造証跡/スコープ逸脱/旧node混入を警戒)→dashboard更新。develop/mainマージは発注者専任・内部用語0・UI確認Dusk(Playwright禁止)・E2E家老・D001-D008
+  command: '整理券管理（抽選予約）画面のFigma乖離を起点に、整理券管理クラスタの忠実性差分を監査→チケット化(担当=斎藤)→Copilot割振りせよ。発注者指摘=抽選予約の編集ボタン等の中身が現行正典(4560:46699
+    https://www.figma.com/design/xDQ4U6O2LUfIrftJGzacqm/?node-id=4560-46699&m=dev
+    )と違う。URLだけでなく周辺の整理券管理nodeも見て差分をticketに。
+
+
+    ■対象(整理券 section 4560:43044配下・canonical-mapで列挙):
+
+    - 抽選予約: 46699(一覧)/46414(編集)/46115(編集_日時入力)/45820(編集_予約枠削除)
+
+    - 基本設定・固定文言: 45626(一覧)/45419(編集)系
+
+    - 抽選番号デザインフレーム: 43342系 ほか周辺
+
+
+    ■手順
+
+    1. TVF忠実性照合(2段・厳格): 各nodeをFigma実取得(48h・実証跡コミット=cmd_717運用)。(1)node現行性(2)develop実装(編集ボタン/項目/ラベル/モーダル)がnode内容と一致するか
+    を要素単位で照合し差分台帳化。
+
+    2. チケット化: 差分ごとに LINELOT_GR へ起票・担当=斎藤・概要にFigmaノード+URL必須・Copilotが1単位で回せる粒度。
+
+    3. Copilot割振り: assign_to_copilot.sh で配賦(karo単一窓口・dedup)。★証跡ガード緑通過(捏造NG)+完了後Claude忠実性照合+gh
+    CI実測後受容★。
+
+
+    ■RACE: ★cmd_712(G-05 フレームパターン枠ごと=同じ46699/46414・G-08 ハズレ券)と重複→karoが単一計画に統合し同一blade同時PR禁止・担当一本化★。#274(整理券一覧account化)ともdedup。
+
+    ■規律: 旧node混入を避け現行node×内容一致厳守(GR-198の轍を踏むな)・develop/mainマージ発注者・内部用語0・UI確認Dusk・E2E家老・軍師QC(gh実測)。
+
+    '
+  project: line-raffle
+  priority: high
+  status: in_progress
+- id: cmd_719
+  timestamp: '2026-06-05T15:18:10+09:00'
+  north_star: 司令塔(将軍)の運用トークンを構造的に削減する。cmd発行・状況確認の度に巨大YAMLを全文Readする出血を止め、長時間オーケストレーションでも将軍が枯渇停止しない体制を作る。将軍が死ぬとフリート全体の差配が止まるため、これは可用性の根幹。
+  purpose: shogun_to_karoキューを『activeのみ』に保つ自動アーカイブと、将軍が全文Read無しでcmdを追記できるappend-onlyヘルパーを整備し、dashboard/MEMORYの肥大も軽量監視する。
+  acceptance_criteria:
+  - 'scripts/append_cmd.sh が存在: 引数で受けたcmd YAMLブロックを flock 付きで queue/shogun_to_karo.yaml
+    末尾へ安全追記する。将軍が全文を読まずに1cmd追記できる(=毎回の数万token読込を不要化)。'
+  - 'status: done の cmd を queue/archive/ へ退避する手順(手動コマンド or 軽量デーモン)を用意し、active が目安300行を超えたら警告を出す。'
+  - shogun_to_karo.yaml / dashboard.md / memory/MEMORY.md の行数・bytesを出力する純shellチェック(scripts/token_diet_check.sh
+    等・トークン消費0)を用意。
+  - 本日の手動アーカイブ実績(cmd_683..704 を queue/archive/shogun_to_karo_archive.yaml へ退避済・active
+    735→549行) と整合させ、二重退避や取りこぼしが無いことを確認。
+  - commit/PR化する場合は内部用語0・軍師レビューPASS。インフラ変更ゆえ軍師レビュー必須。
+  command: '将軍の運用トークン出血を恒久的に止める。背景=将軍はrace回避のためcmd追記前にshogun_to_karo.yamlを全文Readする運用で、肥大した同ファイル(本日735行/113KB≈28k
+    token)を毎cmd読込し枯渇停止した(本日実害)。
+
+    (1) scripts/append_cmd.sh を新設: cmd YAMLブロックを stdin/引数で受け、flock(queue/.shogun_to_karo.lock)を取って末尾へ原子的に追記。全文読込不要。将軍instructionsの『Read
+    just before Edit』に代わる安全append経路として instructions/shogun.md とCLAUDE.mdのworkflowに追記。
+
+    (2) status: done の cmd を queue/archive/shogun_to_karo_archive.yaml へ退避するアーカイブ運用を確立(手動
+    scripts/archive_done_cmds.sh + active 300行超で警告)。本日将軍が cmd_683..cmd_704 を手動退避済ゆえ、その続きとして自動化。
+
+    (3) scripts/token_diet_check.sh: 主要肥大ファイル(shogun_to_karo/dashboard/MEMORY)の行数bytesを出力し閾値超を警告(純shell)。
+
+    (4) 同時に dashboard.md・MEMORY.md のスリム運用指針(activeのみ・解決済は archive へ)を gunshi と確認。
+
+    規律: インフラ変更ゆえ軍師レビュー必須・内部用語0・破壊操作はTier規則厳守・既存watcher/queueレイアウトを壊さぬこと。
+
+    '
+  project: line-raffle
+  priority: medium
+  status: in_progress

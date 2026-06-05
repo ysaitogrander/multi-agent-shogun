@@ -1,0 +1,30 @@
+task:
+  task_id: subtask_719_token_diet_scripts
+  parent_cmd: cmd_719
+  bloom_level: L4
+  description: |
+    【cmd_719(1): 将軍トークン出血の恒久対策scripts(append_cmd.sh/archive_done_cmds.sh/token_diet_check.sh)】
+    殿=将軍のトークン出血(shogun_to_karo.yaml肥大・手動編集でのYAML破損[line-397実例])を恒久対策。priority medium。本multi-agent-shogun repo。
+    ■ 実装scripts(3本・既存archive_done_commands.shと重複/統合に注意)
+    1. ★scripts/append_cmd.sh★: shogun_to_karo.yaml へ新cmdを★安全にappend★(値を自動quote/ブロックスカラー化しYAML破損を防ぐ=line-397事故の再発防止)。引数=cmd_id/north_star/purpose/acceptance_criteria等→正しいYAMLとして追記。append後 python3 yaml.safe_load で構文検証。
+    2. ★scripts/archive_done_cmds.sh★: status:done のcmdを queue/archive/shogun_to_karo_archive.yaml へ退避しshogun_to_karoを軽量化(既存 scripts/archive_done_commands.sh があれば★それを拡張/統合(二重作成しない)★)。★既archive済(cmd_683-704)を二重退避しないguard★。
+    3. ★scripts/token_diet_check.sh★: shogun_to_karo.yaml の行数/cmd数/active(pending+in_progress)数を計測し閾値(例>20 active or >600行)超で警告+archive推奨を出す(token肥大の早期検知)。
+    ■ ★既存資産確認★: scripts/archive_done_commands.sh(karo_role workflow step11.8で参照)・slim_yaml.sh等の既存token対策と重複させず統合/整合。
+    ■ 検証: 3script動作(append=YAML破損なし追記/archive=done退避+二重退避guard/check=閾値警告)・shellcheck通過・既存scriptと非重複/統合・破壊操作なし(archiveは退避でありcmd削除でない・元はarchiveへ移動)・内部用語0。
+    ■ 規律: ★軍師レビュー必須(殿明示)★。破壊操作禁止(archiveは移動・二重退避guard必須)。push=本repo feature(F007)。完了時 status/result/purpose_gap更新(PROC-A)。
+    ■ 完了報告(★軍師レビュー依頼=殿明示必須★)
+    bash scripts/inbox_write.sh gunshi "足軽2号、cmd_719(1)token-diet scripts完了。append_cmd.sh(値自動quote/ブロックスカラーでYAML破損防止=line-397再発防止・append後safe_load検証)・archive_done_cmds.sh(done退避+★cmd_683-704等既archive二重退避guard★・既存archive_done_commands.shと統合)・token_diet_check.sh(行数/active cmd数閾値警告)。shellcheck通過・既存token対策と非重複。★殿明示の軍師レビューを仰ぎたし(安全性・二重退避guard・既存統合)★。" report_received gunshi
+  target_path: "scripts/append_cmd.sh + archive_done_cmds.sh + token_diet_check.sh"
+  echo_message: "🔥 足軽2号、将軍の血脈を守る仕掛けを据える！帳簿は安全に継ぎ、肥えれば退き、出血を止めん！"
+  status: done
+  result: |
+    scripts/append_cmd.sh — 新cmd安全追記(値自動quote/ブロックスカラー/Python重複guard/yaml.safe_load検証/backup+rollback)。ugrep互換対応済。
+    scripts/archive_done_cmds.sh — done退避(cmd_710/711/712/714/715/717の6件→archive。二重退避guard=cmd_683-704スキップ確認済)。archive_done_commands.sh後方互換wrapper化済。
+    scripts/token_diet_check.sh — 行数/active cmd数/archive状況レポート(閾値警告)。実測: 570→477行、18→12active。
+    shellcheck全3本通過。
+  timestamp: "2026-06-05T07:30:00"
+  completed_at: "2026-06-05T15:35:00"
+  purpose_gap:
+    detected: false
+    description: ""
+    action_taken: "該当なし"
