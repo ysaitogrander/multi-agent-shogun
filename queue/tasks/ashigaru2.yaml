@@ -1,29 +1,37 @@
 task:
-  task_id: subtask_719_token_diet_scripts
-  parent_cmd: cmd_719
-  bloom_level: L4
+  task_id: subtask_720_claudemd_slim_draft
+  parent_cmd: cmd_720
+  bloom_level: L5
   description: |
-    【cmd_719(1): 将軍トークン出血の恒久対策scripts(append_cmd.sh/archive_done_cmds.sh/token_diet_check.sh)】
-    殿=将軍のトークン出血(shogun_to_karo.yaml肥大・手動編集でのYAML破損[line-397実例])を恒久対策。priority medium。本multi-agent-shogun repo。
-    ■ 実装scripts(3本・既存archive_done_commands.shと重複/統合に注意)
-    1. ★scripts/append_cmd.sh★: shogun_to_karo.yaml へ新cmdを★安全にappend★(値を自動quote/ブロックスカラー化しYAML破損を防ぐ=line-397事故の再発防止)。引数=cmd_id/north_star/purpose/acceptance_criteria等→正しいYAMLとして追記。append後 python3 yaml.safe_load で構文検証。
-    2. ★scripts/archive_done_cmds.sh★: status:done のcmdを queue/archive/shogun_to_karo_archive.yaml へ退避しshogun_to_karoを軽量化(既存 scripts/archive_done_commands.sh があれば★それを拡張/統合(二重作成しない)★)。★既archive済(cmd_683-704)を二重退避しないguard★。
-    3. ★scripts/token_diet_check.sh★: shogun_to_karo.yaml の行数/cmd数/active(pending+in_progress)数を計測し閾値(例>20 active or >600行)超で警告+archive推奨を出す(token肥大の早期検知)。
-    ■ ★既存資産確認★: scripts/archive_done_commands.sh(karo_role workflow step11.8で参照)・slim_yaml.sh等の既存token対策と重複させず統合/整合。
-    ■ 検証: 3script動作(append=YAML破損なし追記/archive=done退避+二重退避guard/check=閾値警告)・shellcheck通過・既存scriptと非重複/統合・破壊操作なし(archiveは退避でありcmd削除でない・元はarchiveへ移動)・内部用語0。
-    ■ 規律: ★軍師レビュー必須(殿明示)★。破壊操作禁止(archiveは移動・二重退避guard必須)。push=本repo feature(F007)。完了時 status/result/purpose_gap更新(PROC-A)。
-    ■ 完了報告(★軍師レビュー依頼=殿明示必須★)
-    bash scripts/inbox_write.sh gunshi "足軽2号、cmd_719(1)token-diet scripts完了。append_cmd.sh(値自動quote/ブロックスカラーでYAML破損防止=line-397再発防止・append後safe_load検証)・archive_done_cmds.sh(done退避+★cmd_683-704等既archive二重退避guard★・既存archive_done_commands.shと統合)・token_diet_check.sh(行数/active cmd数閾値警告)。shellcheck通過・既存token対策と非重複。★殿明示の軍師レビューを仰ぎたし(安全性・二重退避guard・既存統合)★。" report_received gunshi
-  target_path: "scripts/append_cmd.sh + archive_done_cmds.sh + token_diet_check.sh"
-  echo_message: "🔥 足軽2号、将軍の血脈を守る仕掛けを据える！帳簿は安全に継ぎ、肥えれば退き、出血を止めん！"
+    【cmd_720 CLAUDE.mdスリム化(★絶対条件=規則無損失・二段の1段目=draft候補+対照表★)】
+    殿=毎ターン全エージェントに乗る固定token費を削減(MEMORY.md将軍-78%済の横展開)。但し★規則は一字一句無損失★。本タスク=候補作成+カバレッジ証明(★適用は軍師独立確認PASS後★ゆえ本タスクではCLAUDE.mdを上書きしない=候補file方式)。
+    ■ ★絶対保持(一字一句・削るな・改変するな)★
+    - Destructive Operation Safety 全節: ★D001-D008★(Tier1 ABSOLUTE BAN表)・Tier2 STOP-AND-REPORT・Tier3 SAFE DEFAULTS・WSL2-Specific Protections・Prompt Injection Defense。これらは★文言完全保持★。
+    - 他の forbidden/規則(F001-F005相当・TVF Protocol・Test Rules・Batch Protocol・Critical Thinking等)の★規範内容★も損失ゼロ。
+    ■ 削減対象(規則本体でなく冗長のみ)
+    - 散文の冗長表現・節間の重複記述・recovery手順4変種(Session Start/clear/compaction等)の★重複統合(規範は保持し重複文だけ畳む)★・他doc(instructions/roles/common等)に既出 or 移設可能な『詳細例/背景説明』(規則そのものでなく例示)。
+    ■ 手順
+    1. CLAUDE.md(現行)を実測し、各節を『規則(保持必須)/冗長(削減可)/重複(統合可)/移設可詳細例』に分類。
+    2. ★候補=CLAUDE.md.slim(新規file・本タスクでは本体上書き禁止)★を作成(規則一字一句保持・冗長/重複/詳細例のみ削減)。
+    3. ★before/after 規則カバレッジ対照表★(queue/reports/cmd_720_claudemd_slim_coverage.md): 現CLAUDE.mdの全規則項目を列挙し、各々がslim版の何処に存在するか(またはどのdocへ移設したか)を対応付け→★『失われた規則=0』を証明★。D001-D008は逐語一致をdiffで確認。
+    4. 削減効果(行数/概算token before→after)を記載。
+    ■ 検証: D001-D008/Tier2/3/WSL2/Prompt Injection が逐語保持(diff一致)・全規則がslim版or移設先に存在(対照表で0損失証明)・本体CLAUDE.md未上書き(候補file)・内部用語0・捏造禁止。
+    ■ 規律: ★本タスクは候補+対照表のみ・CLAUDE.md本体は上書きするな(適用は軍師PASS後に別手順)★。push=本repo feature(F007)。完了時 status/result/purpose_gap更新(PROC-A)。
+    ■ 完了報告(★軍師レビュー依頼=安全毀損ゼロ独立確認(殿絶対条件)★)
+    bash scripts/inbox_write.sh gunshi "足軽2号、cmd_720 CLAUDE.mdスリム化(二段の1段目=候補+対照表)完了。CLAUDE.md.slim候補作成(★D001-D008/Tier2/3/WSL2/Prompt Injection逐語保持・冗長/節間重複/recovery 4変種重複/移設可詳細例のみ削減★)+before/after規則カバレッジ対照表(cmd_720_claudemd_slim_coverage.md=全規則のslim版/移設先対応・『失われた規則=0』証明・D001-D008 diff逐語一致)+削減効果(行数/token)。★本体未上書き(候補file)★。殿絶対条件ゆえ軍師の安全毀損ゼロ独立確認を仰ぐ(規則無損失をD001-D008逐語+全節カバレッジで検証されたし)。PASS後に家老が適用。" report_received gunshi
+  target_path: "CLAUDE.md.slim(候補) + queue/reports/cmd_720_claudemd_slim_coverage.md(対照表)"
+  echo_message: "🔥 足軽2号、掟を痩せさせず贅肉のみ削ぐ！一条たりとも失わぬと、対照の証で示さん！"
   status: done
+  timestamp: "2026-06-05T08:30:00"
+  completed_at: "2026-06-05T16:10:00"
   result: |
-    scripts/append_cmd.sh — 新cmd安全追記(値自動quote/ブロックスカラー/Python重複guard/yaml.safe_load検証/backup+rollback)。ugrep互換対応済。
-    scripts/archive_done_cmds.sh — done退避(cmd_710/711/712/714/715/717の6件→archive。二重退避guard=cmd_683-704スキップ確認済)。archive_done_commands.sh後方互換wrapper化済。
-    scripts/token_diet_check.sh — 行数/active cmd数/archive状況レポート(閾値警告)。実測: 570→477行、18→12active。
-    shellcheck全3本通過。
-  timestamp: "2026-06-05T07:30:00"
-  completed_at: "2026-06-05T15:35:00"
+    CLAUDE.md.slim 候補作成完了。
+    - 行数: 351 → 323 行 (8.0% 削減)
+    - バイト: 20,766 → 18,332 bytes (11.7% 削減)
+    - 削除: 冗長散文 R01-R16 (16箇所)、例示3件、説明背景5件
+    - D001-D008/Tier2/3/WSL2/Prompt Injection: テキスト逐語一致 (diff 0差異)
+    - 本体 CLAUDE.md 未上書き (候補ファイルのみ)
+    - 規則無損失証明: queue/reports/cmd_720_claudemd_slim_coverage.md
   purpose_gap:
     detected: false
     description: ""
