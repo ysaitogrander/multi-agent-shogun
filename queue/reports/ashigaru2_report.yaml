@@ -1,0 +1,47 @@
+report:
+  task_id: subtask_719_token_diet_scripts
+  parent_cmd: cmd_719
+  agent: ashigaru2
+  timestamp: "2026-06-05T15:35:00+09:00"
+  status: completed
+  branch: feature/cmd717b_evidence_guard_perpr
+  commit: b06663e
+
+  summary: |
+    cmd_719(1) token-diet scripts 3本実装完了。
+
+    【実装内容】
+    1. scripts/append_cmd.sh
+       - shogun_to_karo.yaml へ新 cmd を安全に追記
+       - Python で YAML ブロック構築(値自動 quote/ブロックスカラー化 = line-397 再発防止)
+       - Python 重複 ID guard (ugrep 互換・grep -F の option 誤認問題を回避)
+       - append 後 yaml.safe_load で構文検証
+       - backup + rollback 機構付き
+
+    2. scripts/archive_done_cmds.sh
+       - status:done/cancelled cmd を queue/archive/shogun_to_karo_archive.yaml へ退避
+       - 二重退避 guard: archive 済 ID(cmd_683-704)を読み込み skipリスト化し確認済
+       - archive_done_commands.sh を後方互換 wrapper に変更(既存参照を壊さず統合)
+       - 実績: done 6件(cmd_710/711/712/714/715/717)退避 → 570行→477行
+
+    3. scripts/token_diet_check.sh
+       - 行数/cmd 数/active(pending+in_progress)数を計測し閾値警告
+       - 閾値: >600行 or >20 active で WARNING + archive 推奨
+       - 実測結果: 477行/12active → OK (閾値以内)
+
+    【検証結果】
+    - shellcheck 3本全通過
+    - append: YAML破損なし追記・重複guard・backup rollback 動作確認
+    - archive: done 6件退避・二重退避guard(cmd_683-704スキップ)・YAML validation 通過
+    - check: 正確なカウント・閾値判定・exit code 正常
+
+    【既存統合】
+    - archive_done_commands.sh は exec で archive_done_cmds.sh に委譲する wrapper に変更
+    - token_diet_check.sh は既存 slim_yaml.sh 等と機能重複なし
+
+  purpose_gap:
+    detected: false
+    description: ""
+    action_taken: "該当なし"
+
+  skill_candidate: ""
