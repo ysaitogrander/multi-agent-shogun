@@ -10,6 +10,41 @@ as the universal canonical source. Always look up this map for the target system
 
 ---
 
+## ★関所ルール (GATEWAY RULE) — 実装前必須チェック
+
+> **殿決裁: 2026-06-05** — 旧node根拠の誤実装防止のため全エージェント義務化（cmd_715）
+
+### 現行正典 vs 旧Node 見分け表
+
+| 区分 | Node系列 | File Key | 状態 | 備考 |
+|------|----------|----------|------|------|
+| ✅ **現行正典 (使用可)** | `4560:41601` 系（admin） | `xDQ4U6O2LUfIrftJGzacqm` | **Active** | 管理者向け管理画面 20260527 |
+| ✅ **現行正典 (使用可)** | `4560:89033` 系（tablet） | `xDQ4U6O2LUfIrftJGzacqm` | **Active** | タブレット画面 20260527 |
+| ❌ **旧Node (参照禁止)** | `209:23439` | `xDQ4U6O2LUfIrftJGzacqm` | **Deprecated** | 旧 Ticket Mgmt/Calendar section（非正典） |
+| ❌ **旧Node (参照禁止)** | `1051:22288` | `xDQ4U6O2LUfIrftJGzacqm` | **Deprecated** | 旧 Raffle Status Detail（非正典） |
+| ❌ **旧Node (参照禁止)** | `62:*` 系 | `xDQ4U6O2LUfIrftJGzacqm` | **Deprecated** | 旧 admin section（整理券特定日設定等） |
+| ❌ **旧Node (参照禁止)** | `1063:26512` 系 | `xDQ4U6O2LUfIrftJGzacqm` | **Deprecated** | 旧 admin section |
+| ❌ **旧File (参照禁止)** | 全node | `z7Uqrd...` | **Deprecated** | 旧タブレットファイル（2026-06-03裁定で廃止） |
+
+### TVF 2段判定（実装前必須）
+
+実装着手前に以下の2段階を必ず実行すること:
+
+**Stage 1: Node系列確認**
+
+- 参照しようとするNode IDが `4560:` で始まるか確認
+- `209:`, `1051:`, `62:`, `1063:` 等の旧系列であれば **即時停止・実装禁止**
+- ファイルキーが `z7Uqrd...` の場合も **即時停止・実装禁止**
+
+**Stage 2: Node内容の実在確認（裏取り）**
+
+- `4560:` 系であっても、Node IDが存在するだけでなく **node内容に当該機能が実在するか** をFigma REST APIで現行node実取得して確認
+- 「node IDが在る」≠「その機能がある」。内容確認なき参照は禁止
+
+> **違反した場合**: 旧node根拠の実装は誤実装扱い。発見次第redo対象となる（F005準用）。
+
+---
+
 ## Canonical Sources by System
 
 ### Admin Management System / Reservation Management
@@ -17,7 +52,9 @@ as the universal canonical source. Always look up this map for the target system
 | Field | Value |
 |-------|-------|
 | Figma File Key | `xDQ4U6O2LUfIrftJGzacqm` |
-| Representative Nodes | `209:23439` (Ticket Management / Calendar), `1051:22288` (Raffle Status Detail) |
+| Representative Section | `4560:41601` (管理者向け管理画面 20260527) — **現行正典セクション** |
+| Representative Nodes | `4560:50444` (整理券管理一覧), `4560:64206` (ホール管理一覧), `4560:67631` (ログイン), `4560:59439` (LINEユーザー管理) |
+| Deprecated Nodes | ~~`209:23439`~~ (旧 Ticket Mgmt/Calendar — **実装根拠禁止**), ~~`1051:22288`~~ (旧 Raffle Status Detail — **実装根拠禁止**) |
 | Status | **Active — current canonical source** |
 | Figma URL pattern | `https://www.figma.com/design/xDQ4U6O2LUfIrftJGzacqm/?node-id=<node>&m=dev` |
 
