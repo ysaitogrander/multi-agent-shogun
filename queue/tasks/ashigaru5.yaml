@@ -1,36 +1,35 @@
 task:
-  task_id: subtask_716_facecheck_raffle_status_ledger
+  task_id: subtask_716_backlog_issue_creation
   parent_cmd: cmd_716
-  bloom_level: L5
+  bloom_level: L4
   description: |
-    【cmd_716 Phase1: 整理券管理(抽選状況)系『顔写真チェック』画面群のTVF確認+チケット化(★捏造防止厳命★)】
-    殿緊急=発注者明言『この画面は必要機能』。整理券管理(抽選状況)系の顔写真チェック画面を正典準拠で実装する前段。★PR#277の3ボタンは現行正典に根拠なし=再実装せず・実装するのは顔写真チェック画面そのもの(#277が引いたnode4560:46982の実体)★。
-    ■ 対象Figma cluster(xDQ4U・現行正典): 4560:47251(顔写真チェックmain)/4560:46982(ユーザー詳細編集)/4560:48032(モーダル)+当該cluster網羅。
-    ■ ★cmd_713と区別★: cmd_713=LINEユーザー管理_顔写真チェック(4560:57288/55842 cluster)。本cmd_716=整理券管理(抽選状況)系_顔写真チェック(4560:47251 cluster)。★別コンテキスト=共通UI重複回避(両者の関係/共有可能componentを台帳に明記)★。
-    ■ ★捏造防止厳命(F005相当)★: (a)Figma証跡ファイルを★実在させてコミット★(48h以内REST実取得・docs/figma-evidence/) (b)★参照node=実装機能の一致を必ず確認(node内容に当該機能が実在するか目視・2段判定)★。証跡不在/node不一致は重大違反で差し戻し。
-    ■ 手順(Phase1=read-only TVF台帳+チケット化・実装は次wave)
-    1. ★cluster各node(4560:47251/46982/48032+周辺)を48h REST実取得★→各画面の用途/項目を特定(2段判定=現行正典トレース可+node内容実在)。canonical-map関所ルール(a2 cmd_715(1)済)準拠。
-    2. develop実装(整理券管理/抽選状況系・RaffleResult/FaceSimilarity系)と突合→[既実装/部分/未]の差分台帳→queue/reports/cmd_716_facecheck_raffle_status_ledger.md。
-    3. ★Backlogチケット化(担当=斎藤・各概要にnode+URL必須)★: Backlog API不可なら起票用チケット内容(タイトル/概要/node/URL/担当斎藤)を完成形で台帳に記載し『要発注者起票』明記(捏造禁止)。
-    4. 実装振り分け案(★Copilot可=48h証跡ガード+完了後Claude忠実性照合+gh CI実測・非Figmaなら直Copilot★/Figma忠実性核はClaude)。在flight#287/#289/cmd_713と重複回避。
-    ■ 検証: cluster各node 48h REST実取得証跡実在・2段判定(node内容一致)・差分台帳正確・チケット内容(node+URL+担当斎藤)・cmd_713との区別明記・捏造禁止・内部用語0。
-    ■ 規律: ★Phase1=read-only台帳+チケット化のみ・実装本体は触るな(次wave)★。push=本repo(report/証跡)feature(F007)。完了時 status/result/purpose_gap更新(PROC-A)。
-    ■ 完了報告(★軍師レビュー依頼=証跡実在+node一致を必ず検証★)
-    bash scripts/inbox_write.sh gunshi "足軽5号、cmd_716 Phase1=整理券管理(抽選状況)系顔写真チェック画面群の差分台帳完了(cmd_716_facecheck_raffle_status_ledger.md)。cluster(4560:47251/46982/48032+周辺)を48h REST実取得(証跡file実在コミット)・2段判定(node内容一致確認)→develop差分台帳(既実装/未)・Backlogチケット化(担当斎藤・node+URL)・cmd_713(4560:57288系)と区別(共通UI重複回避)・実装振り分け(Copilot可分/Claude核)。★軍師QCで(a)証跡実在(b)参照node=実装機能一致を必ず検証されたし(不一致はF005相当)★。" report_received gunshi
-  target_path: "queue/reports/cmd_716_facecheck_raffle_status_ledger.md + Figma証跡file(実在コミット) + チケット化"
-  echo_message: "🔥 足軽5号、整理の状況に顔の検めを据える！符牒は実取得で裏取りし、捏造の影なきを期さん！"
+    【cmd_716 起票取りこぼし是正: B-FACE-RAFFLE-001/002/003 をBacklog API実起票(draft止まり厳禁)】
+    殿指摘=前回の起票batch(cmd_713/718)がcmd_716を取りこぼし。cmd_716_facecheck_raffle_status_ledger.md の3チケットを★実起票★(Backlog API利用可=BACKLOG_API_KEY)。貴殿が本台帳の作成者ゆえ内容把握済。
+    ■ API レシピ
+    - dedup GET: GET https://grander.backlog.jp/api/v2/issues?apiKey=$BACKLOG_API_KEY&projectId[]=185335
+    - 起票 POST: https://grander.backlog.jp/api/v2/issues?apiKey=$BACKLOG_API_KEY / params: projectId=185335・issueTypeId=931238(タスク)・priorityId=3・assigneeId=583192(斎藤)・summary・description(★Figmaノード+URL必須・内部用語0★)・(GR-202 subtask化は parentIssueId)。★$BACKLOG_API_KEYは環境変数(キー値非露出)★
+    ■ 起票対象(3件)
+    - B-FACE-RAFFLE-001: node 4560:47251(顔写真チェック一覧再設計)→新規(Backlog不在)
+    - B-FACE-RAFFLE-002: node 4560:46982(ユーザー詳細編集 新規実装)→★新規起票OKだが本文でGR-202(整理券管理機能監査umbrella)に関連付け=subtask化推奨(parentIssueId=GR-202)★。(node46982はGR-198汚染リストに名のみ=正規チケット非該当)
+    - B-FACE-RAFFLE-003: node 4560:48032(ユーザー詳細モーダル フィールド追加)→新規(Backlog不在)
+    ■ ★dedup厳守★: 作成前GETで突合。47251/48032=不在ゆえ新規。GR-201(4560:59450)/GR-224/225とは別画面ゆえ重複ではない(新規で正)。
+    ■ 訂正: 起票後 (a)各issueKeyを cmd_716_facecheck_raffle_status_ledger.md のチケット表へ追記 (b)★ledger冒頭の『Backlog API不可・要発注者起票』誤記述を『Backlog API利用可・実起票済(issueKey記載)』へ訂正★。
+    ■ 検証: GET dedup・3件実起票(draft止まりでない)・Figmaノード+URL記載・内部用語0・$BACKLOG_API_KEY非露出・issueKey台帳追記・ledger冒頭訂正・GR-202関連付け(002)・捏造禁止。
+    ■ 規律: 外部API書込ゆえ慎重(作成前GET)。push=台帳/dashboard更新は本repo feature(F007)。完了時 status/result/purpose_gap更新(PROC-A)。
+    ■ 完了報告(★軍師レビュー依頼★)
+    bash scripts/inbox_write.sh gunshi "足軽5号、cmd_716 起票取りこぼし是正完了。B-FACE-RAFFLE-001(node47251)/003(node48032)=新規実起票・002(node46982)=新規起票+GR-202 subtask化(parentIssueId)。GET dedup済(47251/48032不在=新規正)。issueKey=[一覧]を cmd_716台帳チケット表へ追記+ledger冒頭の『Backlog API不可』誤記を『API利用可・実起票済』へ訂正。Figmaノード+URL記載・内部用語0・$BACKLOG_API_KEY非露出。軍師QCで重複なし・内部用語0・Figmaノード記載・ledger訂正を検証されたし。" report_received gunshi
+  target_path: "Backlog実起票(cmd_716 B-FACE-RAFFLE-001/002/003) + 台帳issueKey追記+冒頭訂正"
+  echo_message: "🔥 足軽5号、取りこぼせし符を確と帳簿へ起こす！誤記も正し、抜かりなく整えん！"
   status: done
-  timestamp: "2026-06-05T05:30:00"
-  completed_at: "2026-06-05T12:00:00"
   result: |
-    Phase1完了。cluster(4560:47251/46982/48032+周辺)を48h REST実取得・2段判定PASS。
-    証跡file: docs/figma-evidence/cmd716_facecheck_raffle_status_node4560_47251_46982_48032.md
-    差分台帳: queue/reports/cmd_716_facecheck_raffle_status_ledger.md
-    GAP-1: 4560:47251 一覧=部分実装(カラム・データソース乖離→B-FACE-RAFFLE-001 Claude必須)
-    GAP-2: 4560:46982 ユーザー詳細_編集=未実装(専用ルートなし→B-FACE-RAFFLE-002 Claude必須)
-    GAP-3: 4560:48032 モーダル=部分実装(本番号・受付日時欠如→B-FACE-RAFFLE-003 Copilot可)
-    Backlogチケット3件: B-FACE-RAFFLE-001/002/003 (担当斎藤・node+URL付き・要発注者起票)
-    cmd_713区別明記済み。共通コンポーネント(face-thumbnail/再撮影要否action)重複回避記載。
+    B-FACE-RAFFLE-001 → GR-232 (id=53854969) 実起票済
+    B-FACE-RAFFLE-002 → GR-233 (id=53854982) 実起票済 + GR-202 subtask化(parentIssueId=53814648)
+    B-FACE-RAFFLE-003 → GR-234 (id=53855025) 実起票済
+    GET dedup完了(47251/48032不在=新規正)
+    issueKey台帳追記+ledger冒頭訂正完了
+    Figmaノード+URL記載・内部用語0・$BACKLOG_API_KEY非露出
+  timestamp: "2026-06-05T07:50:00"
+  completed_at: "2026-06-05T15:35:00"
   purpose_gap:
     detected: false
     description: ""

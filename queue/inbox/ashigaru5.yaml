@@ -1,151 +1,10 @@
 messages:
-- content: タスクYAMLを読んで作業開始せよ。688a診断確定(develop真break=dusk構造崩壊)を反映し、軍師C4の二分指針(backend-only=dusk
-    skipで緑断定可/フロント触=behind=0までで緑は持ち越し)を追記済。
-  from: karo
-  id: msg_20260603_154833_9a2880c0
-  read: true
-  timestamp: '2026-06-03T15:48:33'
-  type: task_assigned
-- content: 【cmd_555発令】PR#168 hall_admin専用redirect仕様確定→AuthEndpointTest L76+LoginRateLimitTest
-    L53 修正(15-30分)。F005で実装側確認→テスト or 実装どちら修正かを判定。F-003解消候補。タスクYAML読んで作業せよ。
-  from: karo
-  id: msg_20260527_114342_b976e5ea
-  read: true
-  timestamp: '2026-05-27T11:43:42'
-  type: task_assigned
-- content: 【cmd_556 Phase3発令】軍師v2設計書(commit 62ff526 / 773行 / 13セクション)完成。実装範囲=RaffleBasicSetting+CardDesign
-    2Service(AccountService無改修・WebhookUrlGenerationTest自動回避)+順序逆転(空文字埋め込み)。9ファイル+12テスト・3.5-4h。F-S3-001解消候補。タスクYAML読んで作業せよ。
-  from: karo
-  id: msg_20260527_115606_877cf2aa
-  read: true
-  timestamp: '2026-05-27T11:56:06'
-  type: task_assigned
-- content: 【cmd_564発令・priority:high】PR#168 (cmd_555 hall_admin redirect) 殿レビューコメント対応。Step1=gh
-    pr view 168 --comments+inline+reviews 全件取得・Step2=修正要/回答のみ/別cmd起票要 分類・Step3=分類別並列対応。F007修正push承認済。タスクYAML読んで作業せよ。
-  from: karo
-  id: msg_20260527_153554_4559baf9
-  read: true
-  timestamp: '2026-05-27T15:35:54'
-  type: task_assigned
-- content: 【cmd_566 Phase3発令】軍師v2設計書完成(541行・branch docs/cmd_566_hall_admin_nav_design_v2
-    commit e2d9c45)。推奨案A=Sidebar.php 1ファイル変更+Unit3件で完結・1h以内・コード雛形完備。重要発見=AccountAuthController
-    L76既に /accounts一本化+テスト既に /accounts期待値ゆえログインredirect改修不要。タスクYAML読んで作業せよ。
-  from: karo
-  id: msg_20260527_160321_209bdd11
-  read: true
-  timestamp: '2026-05-27T16:03:21'
-  type: task_assigned
-- content: 【cmd_569 Phase2発令・priority:high】Open PR 17本(backend9+docs6+multi-agent1+proteras_docs1)
-    最新CI状態棚卸し(5-10分)。gh pr checks/view のみ・push/merge禁止・修正禁止。CI失敗あれば別cmd起票提案のみ。レビュー推奨アクション分類付き。タスクYAML読んで作業せよ。
-  from: karo
-  id: msg_20260527_164415_c33fc0ed
-  read: true
-  timestamp: '2026-05-27T16:44:15'
-  type: task_assigned
-- content: 【cmd_572 Phase1 補修 priority:high】PR#177 (T-027 S3UploadService v2 本人実装)
-    lint pint UNSTABLE → 5分修正してpush。完遂後はF-S3-001解消確定。autonomy_protocol v1.2 §2 L2
-    (家老OK・QC自走) 範囲内。Phase1 7本既merged済(#179/#175/#178/#84/#78/#79/#80)。失敗時のみ家老に報告。
-  from: karo
-  id: msg_20260527_191327_75bb7404
-  read: true
-  timestamp: '2026-05-27T19:13:27'
-  type: task_assigned
-- content: 【cmd_576・critical・全員必読】autonomy v1.3 §2.4 PR merge絶対禁止ルール適用。今後 gh pr merge
-    は殿明示指示時のみ。Phaseの到達点=『PR殿レビュー可能状態』まで。前提依存時は§2.4.3 ブランチ切出手順。今後の全タスクで遵守。
-  from: karo
-  id: msg_20260527_234210_2ecc6376
-  read: true
-  timestamp: '2026-05-27T23:42:10'
-  type: rule_update
-- content: '【cmd_577 Phase B発令・priority:high】完全実装16項目 SDD突合深掘り。軍師 Phase A設計書 Read必須:
-    proteras_t027_design_worktree/docs/audit/cmd_577_phase_a_design_2026-05-27.md
-    (400行/11セクション・I-01〜I-16+V-1〜V-6 6軸+5足軽分担表)。そなたへの担当項目を §分担表 で確認→SDD全Read+実装grep+マトリクス作成→乖離finding起票
-    (F-XXX-NNN・重要度+工数)。60-90分目安。F005 SDD/実装双方Read必須・F007調査only・autonomy v1.3 §2.4
-    PR merge禁止厳守。報告書 ashigaru5_report.yaml に finding一覧+マトリクス記載。'
-  from: karo
-  id: msg_20260527_234800_533da345
-  read: true
-  timestamp: '2026-05-27T23:48:00'
-  type: task_assigned
-- content: cmd_578 F-USER-001 webhook受け口の実装現況調査。queue/tasks/ashigaru5.yaml をRead。cmd_577
-    Phase B I-08 USER担当本人継投ゆえ文脈最強。grep/Read中心の8軸調査 → 4区分判定 → 報告。コード変更0件・F007厳守・autonomy
-    v1.3 §2.4厳守。推定30-45分。
-  from: karo
-  id: msg_20260528_103446_744588c2
-  read: true
-  timestamp: '2026-05-28T10:34:46'
-  type: task_assigned
-- content: cmd_581 liff docs/sdd submodule更新。queue/tasks/ashigaru5.yaml をRead。aa34615→721743c。手順は4号と同型。並列。merge禁止
-    §2.4。
-  from: karo
-  id: msg_20260528_120247_a17a3d88
-  read: true
-  timestamp: '2026-05-28T12:02:47'
-  type: task_assigned
-- content: 【token節約 /clear】殿のご指示によるidle context リセット。現在 152.7k tokens 蓄積・担当タスク(subtask_581_liff)は
-    done済ゆえ不要context。/clear 後は新タスク dispatch まで idle 待機でよい (instructions再読込・作業ハント不要)。
-  from: shogun
-  id: msg_20260528_143131_6599bb0e
-  read: true
-  timestamp: '2026-05-28T14:31:31'
-  type: clear_command
-- content: 【cmd_589 backend 発令】tmux再生成でcontext消失。.shogun/queue/tasks/ashigaru5.yaml
-    (subtask_589a) を読んで作業開始せよ。F-USER-001 管理者手動ステータス経路を normal/caution/blacklist の3値に制限(UpdateUserStatusRequest/BulkUpdateUserStatusRequest)+管理UI選択肢除去+テスト。Lambda自動遷移経路は絶対に触るな(スコープ外)。実装Sonnet・PR
-    base=develop・merge殿承認待ち。報告は inbox_write karo。
-  from: karo
-  id: msg_20260528_155934_f4967b60
-  read: true
-  timestamp: '2026-05-28T15:59:34'
-  type: task_assigned
-- content: '【cmd_593 発令・小タスク】.shogun/queue/tasks/ashigaru5.yaml を読んで着手せよ。teramoba保持方式doc(proteras_t027_design_worktree/docs/audit/cmd_588_teramoba_storage_design.md)を改訂:
-    §4.2 L98 ON DUPLICATE KEY UPDATE→INSERT IGNORE統一(§4.4と整合)+理由明記+ElastiCache廃棄済ゆえRDS
-    INSERT IGNOREが唯一の重複排除と補強+書込頻度1-2文。設計骨子は維持。prd-infrastructure.mdは触れぬ。F007=編集のみ。報告は
-    inbox_write karo。'
-  from: karo
-  id: msg_20260528_164804_92f947b6
-  read: true
-  timestamp: '2026-05-28T16:48:04'
-  type: task_assigned
-- content: cmd_631 Wave1発令。queue/tasks/ashigaru5.yaml (subtask_631_5) を読んで U06+PR#199
-    draft解除 を実施せよ。★PR/commit に内部用語禁止★
-  from: karo
-  id: msg_20260601_194625_7ec1be59
-  read: true
-  timestamp: '2026-06-01T19:46:25'
-  type: task_assigned
-- content: queue/tasks/ashigaru5.yaml (subtask_631_5) を読んで U06カラーピッカー実装+PR#199 draft解除を実施せよ。★PR/commit
-    に内部用語禁止★
-  from: karo
-  id: msg_20260601_195258_cdc02345
-  read: true
-  timestamp: '2026-06-01T19:52:58'
-  type: task_assigned
-- content: queue/tasks/ashigaru5.yaml (subtask_631_5) を読んで U06カラーピッカー実装+PR#199 draft解除を実施せよ。★PR/commit
-    に内部用語禁止★
-  from: karo
-  id: msg_20260601_201413_bc3ef377
-  read: true
-  timestamp: '2026-06-01T20:14:13'
-  type: task_assigned
 - content: タスクYAMLを読んで作業開始せよ。
   from: karo
-  id: msg_20260601_234713_8c04d094
+  id: msg_20260605_131909_273d456f
   read: true
-  timestamp: '2026-06-01T23:47:13'
+  timestamp: '2026-06-05T13:19:09'
   type: clear_command
-- content: '[auto-recovery] /clear 後の再着手通知。queue/tasks/ashigaru5.yaml を再読し、assigned
-    タスクを即時再開せよ。'
-  from: inbox_watcher
-  id: msg_auto_recovery_20260602_013056_efbc690b
-  read: true
-  timestamp: '2026-06-02T01:30:56+09:00'
-  type: task_assigned
-- content: タスクYAMLを読んで作業開始せよ。
-  from: karo
-  id: msg_20260602_180501_c2021875
-  read: true
-  timestamp: '2026-06-02T18:05:02'
-  type: task_assigned
 - content: タスクYAMLを読んで作業開始せよ。subtask_666a=PR#190をFigma正典(with docs)と再照合→OKならdevelopマージ/NGなら修正+斎藤へ再レビュー依頼。旧デザイン依存も確認(殿コメント対応)。
   from: karo
   id: msg_20260602_182911_2a638482
@@ -325,4 +184,37 @@ messages:
   id: msg_auto_recovery_20260605_111814_2bb93a28
   read: true
   timestamp: '2026-06-05T11:18:14+09:00'
+  type: task_assigned
+- content: タスクYAMLを読んで作業開始せよ。
+  from: karo
+  id: msg_20260605_114559_4e9836b8
+  read: true
+  timestamp: '2026-06-05T11:45:59'
+  type: clear_command
+- content: '[auto-recovery] /clear 後の再着手通知。queue/tasks/ashigaru5.yaml を再読し、assigned
+    タスクを即時再開せよ。'
+  from: inbox_watcher
+  id: msg_auto_recovery_20260605_114627_230f7a55
+  read: true
+  timestamp: '2026-06-05T11:46:27+09:00'
+  type: task_assigned
+- content: '[auto-recovery] /clear 後の再着手通知。queue/tasks/ashigaru5.yaml を再読し、assigned
+    タスクを即時再開せよ。'
+  from: inbox_watcher
+  id: msg_auto_recovery_20260605_131937_4275af9f
+  read: true
+  timestamp: '2026-06-05T13:19:37+09:00'
+  type: task_assigned
+- content: タスクYAMLを読んで作業開始せよ。
+  from: karo
+  id: msg_20260605_152723_d680e5f7
+  read: true
+  timestamp: '2026-06-05T15:27:23'
+  type: clear_command
+- content: '[auto-recovery] /clear 後の再着手通知。queue/tasks/ashigaru5.yaml を再読し、assigned
+    タスクを即時再開せよ。'
+  from: inbox_watcher
+  id: msg_auto_recovery_20260605_152751_9a9acb0b
+  read: true
+  timestamp: '2026-06-05T15:27:51+09:00'
   type: task_assigned

@@ -116,9 +116,9 @@
 
 ---
 
-## Backlogチケット化（担当=斎藤・要発注者起票）
+## Backlogチケット化（担当=斎藤・Backlog API利用可・実起票済(issueKey記載)）
 
-> **Backlog API不可のため、起票用チケット内容を記載（要発注者起票）**
+> **Backlog API利用可・実起票済(issueKey記載)** — 2026-06-05 ashigaru5 実施
 
 ---
 
@@ -126,12 +126,13 @@
 
 | 項目 | 内容 |
 |------|------|
-| タイトル | 整理券管理（抽選状況）_顔写真チェック一覧をFigma正典に合わせて再設計 |
+| **Backlog issueKey** | **GR-232** (id=53854969) |
+| タイトル | 整理券管理（抽選状況）_顔写真チェック一覧をFigma正典（node 4560:47251）に合わせて再設計 |
 | 担当 | 斎藤 |
 | Figma Node | `4560:47251` |
 | Figma URL | https://www.figma.com/design/xDQ4U6O2LUfIrftJGzacqm/?node-id=4560:47251&m=dev |
 | 概要 | `face-similarity-results/raffle-context.blade.php` をFigma正典に合わせて再設計。データソースを `face_similarity_results` 絞り込みから `raffle_result_entries × users` 参加者ビューに変更。カラム構成（名前/ステータス/チェック結果/再撮影要否/詳細/操作）・フィルターUI（名前検索/ホール選択）・タブバッジフィルター（すべて/正常/要注意/警告）・Paginationを実装 |
-| 関連 | cmd_716 GAP-1 / 既存ルート `GET /raffles/{raffle}/face-check` 維持 |
+| 関連 | GAP-1 / 既存ルート `GET /raffles/{raffle}/face-check` 維持 |
 
 ---
 
@@ -139,12 +140,14 @@
 
 | 項目 | 内容 |
 |------|------|
-| タイトル | 整理券管理（抽選状況）_顔写真チェック_ユーザー詳細_編集 専用画面の新規実装 |
+| **Backlog issueKey** | **GR-233** (id=53854982) |
+| **親チケット** | **GR-202** (id=53814648) ← subtask化済 |
+| タイトル | 整理券管理（抽選状況）_顔写真チェック_ユーザー詳細_編集 専用画面の新規実装（Figma node 4560:46982） |
 | 担当 | 斎藤 |
 | Figma Node | `4560:46982` |
 | Figma URL | https://www.figma.com/design/xDQ4U6O2LUfIrftJGzacqm/?node-id=4560:46982&m=dev |
-| 概要 | 整理券コンテキスト専用のユーザー詳細_編集ビューを新規作成。新ルート `GET /raffles/{raffle}/face-check/{entry}` 追加。表示フィールド: 名前/店舗名/本番号/チェック結果/詳細/ステータス/友達登録日/最終抽選参加日/再撮影要否チェックボックス+説明テキスト。類似ユーザーリスト（類似度/名前/チェック結果/ステータス等）。再撮影要否更新は既存 `PATCH /users/{user}/face-rejected` ルートを再利用（cmd_713実装済みとの共通化）。顔写真表示は `x-ui.face-thumbnail` コンポーネント共通使用 |
-| 関連 | cmd_716 GAP-2 / cmd_713との重複排除（再撮影要否action・thumbnailコンポーネント共有） |
+| 概要 | 整理券コンテキスト専用のユーザー詳細_編集ビューを新規作成。新ルート `GET /raffles/{raffle}/face-check/{entry}` 追加。表示フィールド: 名前/店舗名/本番号/チェック結果/詳細/ステータス/友達登録日/最終抽選参加日/再撮影要否チェックボックス+説明テキスト。類似ユーザーリスト（類似度/名前/チェック結果/ステータス等）。再撮影要否更新は既存 `PATCH /users/{user}/face-rejected` ルートを再利用（thumbnailコンポーネント共通使用） |
+| 関連 | GAP-2 / GR-202 subtask化（parentIssueId=53814648） |
 
 ---
 
@@ -152,12 +155,13 @@
 
 | 項目 | 内容 |
 |------|------|
-| タイトル | 整理券管理（抽選状況）_ユーザー詳細モーダルに本番号・受付日時・最終抽選参加日を追加 |
+| **Backlog issueKey** | **GR-234** (id=53855025) |
+| タイトル | 整理券管理（抽選状況）_ユーザー詳細モーダルに本番号・受付日時・最終抽選参加日を追加（Figma node 4560:48032） |
 | 担当 | 斎藤 |
 | Figma Node | `4560:48032` |
 | Figma URL | https://www.figma.com/design/xDQ4U6O2LUfIrftJGzacqm/?node-id=4560:48032&m=dev |
 | 概要 | `raffles/show.blade.php` L511 `#user-detail-modal` に不足フィールドを追加。追加: 本番号（`raffle_result_entries.pre_number`）/ 受付日時（`raffle_result_entries.created_at`）/ 最終抽選参加日。テーブル行に `data-pre-number`・`data-entry-at` 属性を追加しJSでモーダルへ渡す。PR #278 merge状況次第で被覆可能性を再確認のこと |
-| 関連 | cmd_716 GAP-3 / PR #278 B-MON-001/002/004 との重複確認要 |
+| 関連 | GAP-3 / PR #278 B-MON-001/002/004 との重複確認要 |
 
 ---
 
