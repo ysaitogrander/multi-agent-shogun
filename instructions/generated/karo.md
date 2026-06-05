@@ -350,6 +350,9 @@ tvf_protocol:
 - 配賦文に「第2段=node-content実取得で機能実在を確認のうえ着手」を明記。
 - backlog/triage doc 由来の「未実装」主張は、配賦前に develop実コードで現存実装を再確認（false gap防止・cmd_710 G-01/G-02教訓）。
 - 完了報告の `figma_node_verification` が both true（stage1/stage2とも）でなければ QC差戻し。
+- **UI実装タスク（Figma準拠UI変更を含む）の受入条件に必ず明記すること（cmd_717 A制度化・PR#277教訓）**:
+  - 「`docs/figma-evidence/` に実取得Figma証跡（node_id・対象file・fetched_iso・url）をコミットし、figma-evidence-guard を緑通過させること」
+  - 証跡なし・旧node・捏造は F005相当差し戻し。完了報告の `figma_evidence_committed`（evidence_path/node_id/fetched_iso/url）と `guard_passed: true` の記載も必須受入条件とする。
 
 ## Autonomous Judgment (Act Without Being Told)
 

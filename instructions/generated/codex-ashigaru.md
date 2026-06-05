@@ -61,6 +61,14 @@ figma_node_verification:
   stage2_feature_matches_content: true     # node内容に当該機能が実在(frame名/項目一致)
   evidence_log: ""                         # logs/figma_fetch_evidence.log の該当行
   # いずれかfalse → 実装着手不可・家老へ要特定申告（F005相当違反）
+
+# UI実装PR(Figma準拠UI変更)のみ必須 — Figma証跡同梱＋figma-evidence-guard 緑通過確認（PR#277教訓・cmd_717 A制度化）
+figma_evidence_committed:
+  evidence_path: ""              # docs/figma-evidence/ 配下のコミット済みファイルパス（例: docs/figma-evidence/20260605_4560-42xxx.json）
+  node_id: ""                    # 証跡に含まれるFigma node ID（捏造禁止）
+  fetched_iso: ""                # 取得日時（ISO 8601 形式 例: 2026-06-05T10:30:00+09:00）
+  url: ""                        # Figma node URL（https://www.figma.com/...）
+guard_passed: false              # figma-evidence-guard の緑通過確認（PR CI通過が前提・捏造禁止）
 ```
 
 **Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, purpose_gap, skill_candidate, ci.
@@ -181,6 +189,20 @@ subagent_verification:
 - 🥇 `figma-fresh-fetch-guard` — Pre-PR hook で 48h 以内取得証跡を必須化（High推奨）
 - 🥈 `figma-component-type-checker` — Figma 種別と実装 UI の差分自動検知（Med-High）
 - 🥉 `lord-assumption-verifier` — Lord 指示の事実主張を自動検証（Med → High 昇格推奨）
+
+### Figma証跡同梱必須ルール（UI実装PR — PR#277教訓・cmd_717 A制度化）
+
+UI実装PR（Figma準拠UI変更を含む全PR）に以下を必須とする。
+
+- **証跡コミット必須**: `docs/figma-evidence/` 配下に実取得Figma証跡（node_id・対象file・fetched_iso・url）をコミットする。
+- **figma-evidence-guard 緑通過必須**: PR CI の figma-evidence-guard チェックを緑にする。
+- **完了報告フィールド必須**: `figma_evidence_committed`（evidence_path/node_id/fetched_iso/url）と `guard_passed` を報告 YAML に記載する（上記 Report Format 参照）。
+
+**F005相当差し戻し対象**（証跡なし・旧node・捏造のいずれも不可）:
+- `docs/figma-evidence/` へのコミット省略
+- 対象 PR の画面と異なる node ID（旧node・無効証跡）
+- 実取得なしの証跡捏造
+- `guard_passed: false` のまま完了報告
 
 ## Shout Mode (echo_message)
 

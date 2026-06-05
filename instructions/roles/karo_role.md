@@ -100,17 +100,29 @@ Do this before dispatching subtasks (fast, safe, no dependencies).
 
 ### Archive on Completion
 
+**Auto-archive script available**: `bash scripts/archive_done_commands.sh`
+
 When marking a cmd as `done` or `cancelled`:
+1. Update the status in `queue/shogun_to_karo.yaml`
+2. Run the archive script (it handles steps 2-3 automatically):
+   - Moves all done/cancelled entries to `queue/shogun_to_karo_archive.yaml`
+   - Validates YAML integrity
+   - Creates backup before modification
+   - Auto-rollback on failure
+
+**Manual archive** (if script unavailable):
 1. Update the status in `queue/shogun_to_karo.yaml`
 2. Move the entire cmd entry to `queue/shogun_to_karo_archive.yaml`
 3. Delete the entry from `queue/shogun_to_karo.yaml`
 
-This keeps the active file small and readable. Only `pending` and
-`in_progress` entries remain in the active file.
+This keeps the active file small and readable (target: <20 active cmds).
+Only `pending` and `in_progress` entries remain in the active file.
 
 When a cmd is `paused` (e.g., project on hold), archive it too.
 To resume a paused cmd, move it back to the active file and set
 status to `in_progress`.
+
+**Recommended frequency**: Run archive script weekly, or after completing 5+ cmds.
 
 ### Checklist Before Every Dashboard Update
 
@@ -276,11 +288,15 @@ Lord の前提主張と Figma 実態の乖離による誤実装を未然に防�
 task YAML に以下 4 ブロックを **必須記載** する。
 （軍師 cmd_510 v2 監査結論の制度化。CLAUDE.md「TVF Protocol」節を併読のこと）
 
+**正典ファイルキーは系統別可変**。タスク発行前に `context/figma-canonical-map.md` を参照し、
+対象システムの正典ファイルキーを確認すること。ファイルキーを task YAML に直書きせず、
+必ず正典マップを参照経由にすること。
+
 ```yaml
 tvf_protocol:
   step_1_fresh_fetch:
-    requirement: "Figma MCP の get_design_context を本タスク開始時に必須実行"
-    rationale: "24 時間以上前のキャッシュ証跡は不可。本タスク内で fresh fetch すること"
+    requirement: "context/figma-canonical-map.md で対象システムの正典ファイルキーを確認後、Figma MCP で当該 node を本タスク開始時に必須実行。★PR対象nodeを直前にfetch&recordすること★ — 別nodeの証跡では対象画面の鮮度は非保証"
+    rationale: "24 時間以上前のキャッシュ証跡は不可。本タスク内で fresh fetch すること。正典ファイルキーは系統別可変ゆえ canonical-map.md を必ず参照すること"
   step_2_component_inventory:
     requirement: "取得した node のコンポーネント種別 (Toggle/Switch/Radio/Checkbox 等) を一覧化してから実装開始"
     output: "report の component_inventory フィールドに列挙"
@@ -306,6 +322,36 @@ tvf_protocol:
 
 非 Figma タスクでも、Lord の事実主張に基づく実装を求めるなら本テンプレに準拠した
 「前提検証ブロック」を別途設けることが推奨される。
+
+### 新規 UI チケット起票時テンプレ（Figma 正典ノード必須記載）
+
+管理画面・タブレット系など UI を伴うチケットを Backlog に起票する際は、
+`context/figma-canonical-map.md` を参照して対応 Figma 正典ノードを記載する。
+
+```
+## 対応 Figma 正典ノード
+### 画面 N: <画面名>
+- 対応 Figma 正典ノード: <node_id>
+- URL: https://www.figma.com/design/<canonical_file_key_from_map>/?node-id=<n>&m=dev
+※ ノード不明な場合は「要特定」と記載（捏造禁止）
+※ 正典ファイルキーは context/figma-canonical-map.md を参照すること
+```
+
+- 新規起票時のみ必須（既存チケットは retroactive 対応不要）
+- ノード不明なまま「あとで追記」は禁止。起票時に特定または「要特定」明記のどちらかを選ぶこと
+- タブレット系・廃止画面の扱いは `context/figma-canonical-map.md` の各エントリを参照すること
+
+### TVF 2段判定の配賦時ゲート（karo）
+
+足軽へ Figma準拠UI/画面タスクを配賦する前に:
+- タスクYAMLの参照nodeが現行正典(4560:41601/89033 section)にトレース可か確認（旧node 209/1051/62系/1063/z7Uq を渡すな）。
+  → `context/figma-canonical-map.md` 関所ルールと連動。canonical-mapの画面別nodeマップを参照経由とすること。
+- 配賦文に「第2段=node-content実取得で機能実在を確認のうえ着手」を明記。
+- backlog/triage doc 由来の「未実装」主張は、配賦前に develop実コードで現存実装を再確認（false gap防止・cmd_710 G-01/G-02教訓）。
+- 完了報告の `figma_node_verification` が both true（stage1/stage2とも）でなければ QC差戻し。
+- **UI実装タスク（Figma準拠UI変更を含む）の受入条件に必ず明記すること（cmd_717 A制度化・PR#277教訓）**:
+  - 「`docs/figma-evidence/` に実取得Figma証跡（node_id・対象file・fetched_iso・url）をコミットし、figma-evidence-guard を緑通過させること」
+  - 証跡なし・旧node・捏造は F005相当差し戻し。完了報告の `figma_evidence_committed`（evidence_path/node_id/fetched_iso/url）と `guard_passed: true` の記載も必須受入条件とする。
 
 ## Autonomous Judgment (Act Without Being Told)
 
