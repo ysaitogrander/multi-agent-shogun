@@ -316,6 +316,8 @@ MCP用_タブレット画面ページ section `4560:89033`（20260527）。TB-01
 
 整理券 section (`4560:43044`) 内・抽選状況部分。B-MON-001/002/004 (#278 in-flight) が参照する画面群。
 
+★ **cmd_716 Phase1 監査 2026-06-05 ashigaru5**: 4560:47251/46982/48032 を48h REST実取得・2段判定PASS。差分台帳: `queue/reports/cmd_716_facecheck_raffle_status_ledger.md`。GAP-1(一覧=部分実装)/GAP-2(ユーザー詳細_編集=未実装)/GAP-3(モーダル=部分実装)。Backlogチケット3件(B-FACE-RAFFLE-001/002/003)。
+
 | # | 画面名 | Node ID | Figma URL |
 |---|--------|---------|-----------|
 | 42 | 整理券管理（一覧）**★整理券管理main・カレンダービュー含む★** | `4560:50444` | [dev](https://www.figma.com/design/xDQ4U6O2LUfIrftJGzacqm/?node-id=4560:50444&m=dev) |
