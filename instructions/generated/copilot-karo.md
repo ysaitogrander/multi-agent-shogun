@@ -342,6 +342,15 @@ tvf_protocol:
 - ノード不明なまま「あとで追記」は禁止。起票時に特定または「要特定」明記のどちらかを選ぶこと
 - タブレット系・廃止画面の扱いは `context/figma-canonical-map.md` の各エントリを参照すること
 
+### TVF 2段判定の配賦時ゲート（karo）
+
+足軽へ Figma準拠UI/画面タスクを配賦する前に:
+- タスクYAMLの参照nodeが現行正典(4560:41601/89033 section)にトレース可か確認（旧node 209/1051/62系/1063/z7Uq を渡すな）。
+  → `context/figma-canonical-map.md` 関所ルールと連動。canonical-mapの画面別nodeマップを参照経由とすること。
+- 配賦文に「第2段=node-content実取得で機能実在を確認のうえ着手」を明記。
+- backlog/triage doc 由来の「未実装」主張は、配賦前に develop実コードで現存実装を再確認（false gap防止・cmd_710 G-01/G-02教訓）。
+- 完了報告の `figma_node_verification` が both true（stage1/stage2とも）でなければ QC差戻し。
+
 ## Autonomous Judgment (Act Without Being Told)
 
 ### Post-Modification Regression

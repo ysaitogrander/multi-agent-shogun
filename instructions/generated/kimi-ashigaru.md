@@ -38,9 +38,34 @@ skill_candidate:
   name: null        # e.g., "readme-improver"
   description: null # e.g., "Improve README for beginners"
   reason: null      # e.g., "Same pattern executed 3 times"
+
+# PRを伴うタスク必須 — CI全体(phpunit+lint等) conclusion:success 実測確認結果
+# PRなし・instructions編集等の非PRタスクはrun_id/conclusion=null可
+ci:
+  run_id: null      # gh run ID (例: 12345678901) — 実測値を記載。捏造禁止。
+  conclusion: null  # "success" | "failure" | null（PRなしタスクはnull）
+
+# Figma準拠タスクのみ必須（非 Figma タスクは省略可）
+tvf_verification:
+  canonical_map_checked: true  # context/figma-canonical-map.md を参照したか
+  figma_node_ids: []           # 確認した Figma node ID のリスト（捏造禁止）
+  fetch_date: ""               # 本タスク内でのフェッチ日時（YYYY-MM-DD）
+  within_48h: true
+
+# Figma準拠タスクのみ必須（非 Figma タスクは省略可）— TVF 2段判定結果（cmd_715 R2案）
+figma_node_verification:
+  referenced_node: "4560:xxxxx"            # 参照したFigma nodeID（捏造禁止）
+  stage1_traceable_to_canonical: true      # 現行正典(4560:41601/89033 section)にトレース可
+  stage1_canonical_map_listed: true        # figma-canonical-map.md 画面別nodeマップに掲載
+  stage2_content_fetched: true             # node-content をFigma REST/MCPで実取得
+  stage2_feature_matches_content: true     # node内容に当該機能が実在(frame名/項目一致)
+  evidence_log: ""                         # logs/figma_fetch_evidence.log の該当行
+  # いずれかfalse → 実装着手不可・家老へ要特定申告（F005相当違反）
 ```
 
-**Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, purpose_gap, skill_candidate.
+**Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, purpose_gap, skill_candidate, ci.
+Figma準拠タスクでは `tvf_verification` と `figma_node_verification` も必須。
+**PRを伴うタスク**: `ci.run_id` + `ci.conclusion` は実測値必須（ローカル pass のみでの完了報告禁止 — local-vs-CIギャップ防止）。
 Missing fields = incomplete report.
 
 `purpose_gap.detected: true` の場合は実装を保留し、家老へ inbox_write で即報告すること。
@@ -75,11 +100,17 @@ Act without waiting for Karo's instruction:
 
 **On task completion** (in this order):
 1. Self-review deliverables (re-read your output)
-2. **Purpose validation**: Read `parent_cmd` in `queue/shogun_to_karo.yaml` and verify your deliverable actually achieves the cmd's stated purpose. If there's a gap between the cmd purpose and your output, note it in the report under `purpose_gap:`.
-3. Write report YAML
-4. Notify Gunshi via inbox_write (NOT Karo directly)
-5. **Check own inbox** (MANDATORY): Read `queue/inbox/ashigaru{N}.yaml`, process any `read: false` entries. This catches redo instructions that arrived during task execution. Skip = stuck idle until the next nudge escalation or task reassignment.
-6. (No delivery verification needed — inbox_write guarantees persistence)
+2. **CI green check** (PRを伴うタスク必須 — SKIP=FAIL):
+   `gh run list --branch <branch> --limit 1 --json databaseId,status,conclusion` を実行し、
+   CI 全体(phpunit + lint 等) の `conclusion: success` を★実測確認★してから次へ進む。
+   ローカル部分実行の pass 単独での完了報告は禁止（local-vs-CIギャップ防止）。
+   run_id と conclusion を report YAML の `ci` フィールドに必須記載する。
+   PRなしタスク（instructions編集・調査等）は `ci.run_id: null, ci.conclusion: null` で可。
+3. **Purpose validation**: Read `parent_cmd` in `queue/shogun_to_karo.yaml` and verify your deliverable actually achieves the cmd's stated purpose. If there's a gap between the cmd purpose and your output, note it in the report under `purpose_gap:`.
+4. Write report YAML
+5. Notify Gunshi via inbox_write (NOT Karo directly)
+6. **Check own inbox** (MANDATORY): Read `queue/inbox/ashigaru{N}.yaml`, process any `read: false` entries. This catches redo instructions that arrived during task execution. Skip = stuck idle until the next nudge escalation or task reassignment.
+   (No delivery verification needed — inbox_write guarantees persistence)
 
 **Quality assurance:**
 - After modifying files → verify with Read
@@ -95,12 +126,32 @@ Act without waiting for Karo's instruction:
 Figma 準拠系タスク／Lord の事実主張に基づくタスクを受領したら、実装着手前に以下を必ず実行する。
 （軍師 cmd_510 v2 監査の制度化。CLAUDE.md「TVF Protocol」節を併読のこと）
 
+### TVF 2段判定（Figma node を実装根拠にする前に必須）
+
+Figma node を実装の根拠とする際は、着手前に次の2段を both YES で通過せよ。
+どちらかが NO なら着手するな——家老へ「要特定」を申告せよ。
+（`context/figma-canonical-map.md` 関所ルールと連動。canonical-mapの画面別nodeマップを参照経由とすること）
+
+1. **第1段 トレーサビリティ**: 参照nodeが現行正典にトレース可か。
+   - 現行正典 = xDQ4U（admin: section 4560:41601 / tablet: section 4560:89033・いずれも20260527）。
+   - `context/figma-canonical-map.md` の「画面別nodeマップ」に当該nodeが載るか確認。
+   - ★旧node禁止★: 209:23439 / 1051:22288 / 62系 / 1063:26512 / z7Uqファイル等を根拠にするな（関所で停止・申告）。
+2. **第2段 コンテンツ照合**: その node の内容に当該機能が実在するか。
+   - ★Figma REST/MCP で node-content を実取得し、frame名・表示項目・UI が実装機能と一致することを目視確認★。
+   - ★backlog/triage doc/PDF/過去報告 単体を実装根拠にするな★——必ずFigma現行nodeの実取得で裏取りせよ。
+   - develop実コードで「現存実装」も確認（既実装の重複/誤実装を防ぐ。例: F-S3/F-QRは既実装だった）。
+
+完了報告には `figma_node_verification`（stage1/stage2 各true・evidence_log）を必須記載。
+いずれか false の実装は F005相当（事実検証スキップ）違反。
+
 ### Self-check (実装前・必須)
 
-- [ ] **Fresh fetch**: Figma MCP で当該 node を本タスク内で再取得（24 時間以内のキャッシュ証跡不可）
+- [ ] **Fresh fetch**: `context/figma-canonical-map.md` で対象システムの正典ファイルキーを確認後、Figma MCP で当該 node を本タスク内で再取得（24 時間以内のキャッシュ証跡不可）
 - [ ] **Component inventory**: 取得結果のコンポーネント種別（Toggle / Switch / Radio / Checkbox 等）を report の `component_inventory` フィールドに列挙
 - [ ] **Assumption verification**: 殿/家老の前提主張と Figma 実態に乖離があれば即報告し、実装を保留（家老へ inbox_write、`purpose_gap.detected: true` で報告）
 - [ ] **PR 必須記載**: Figma 再取得日時・nodeID・コンポーネント種別を PR 本文に必須記載
+- [ ] **Backlog リンクドメイン**: PR 本文に Backlog URL を記載する場合は `grander.backlog.jp` を使用（`grander.backlog.com` は誤ドメイン・404になる）。完了定義: `grep grander.backlog.com <PR本文>` でゼロ件を実測確認。
+- [ ] **UI確認 / スクリーンショット / E2E**: UI確認・スクリーンショット・E2E は **Laravel Dusk** で行う。**★`mcp__playwright__browser_*` 系 MCP ツールでブラウザを起動するな★**。E2E/Dusk は家老担当・足軽はユニットテストのみ（詳細: `context/line_raffle.md` テスト方針参照）。
 
 ### サブエージェント自動チェック (Task tool 利用時)
 

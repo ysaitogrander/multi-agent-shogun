@@ -51,10 +51,20 @@ tvf_verification:
   figma_node_ids: []           # 確認した Figma node ID のリスト（捏造禁止）
   fetch_date: ""               # 本タスク内でのフェッチ日時（YYYY-MM-DD）
   within_48h: true
+
+# Figma準拠タスクのみ必須（非 Figma タスクは省略可）— TVF 2段判定結果（cmd_715 R2案）
+figma_node_verification:
+  referenced_node: "4560:xxxxx"            # 参照したFigma nodeID（捏造禁止）
+  stage1_traceable_to_canonical: true      # 現行正典(4560:41601/89033 section)にトレース可
+  stage1_canonical_map_listed: true        # figma-canonical-map.md 画面別nodeマップに掲載
+  stage2_content_fetched: true             # node-content をFigma REST/MCPで実取得
+  stage2_feature_matches_content: true     # node内容に当該機能が実在(frame名/項目一致)
+  evidence_log: ""                         # logs/figma_fetch_evidence.log の該当行
+  # いずれかfalse → 実装着手不可・家老へ要特定申告（F005相当違反）
 ```
 
 **Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, purpose_gap, skill_candidate, ci.
-Figma準拠タスクでは `tvf_verification` も必須。
+Figma準拠タスクでは `tvf_verification` と `figma_node_verification` も必須。
 **PRを伴うタスク**: `ci.run_id` + `ci.conclusion` は実測値必須（ローカル pass のみでの完了報告禁止 — local-vs-CIギャップ防止）。
 Missing fields = incomplete report.
 
@@ -115,6 +125,24 @@ Act without waiting for Karo's instruction:
 
 Figma 準拠系タスク／Lord の事実主張に基づくタスクを受領したら、実装着手前に以下を必ず実行する。
 （軍師 cmd_510 v2 監査の制度化。CLAUDE.md「TVF Protocol」節を併読のこと）
+
+### TVF 2段判定（Figma node を実装根拠にする前に必須）
+
+Figma node を実装の根拠とする際は、着手前に次の2段を both YES で通過せよ。
+どちらかが NO なら着手するな——家老へ「要特定」を申告せよ。
+（`context/figma-canonical-map.md` 関所ルールと連動。canonical-mapの画面別nodeマップを参照経由とすること）
+
+1. **第1段 トレーサビリティ**: 参照nodeが現行正典にトレース可か。
+   - 現行正典 = xDQ4U（admin: section 4560:41601 / tablet: section 4560:89033・いずれも20260527）。
+   - `context/figma-canonical-map.md` の「画面別nodeマップ」に当該nodeが載るか確認。
+   - ★旧node禁止★: 209:23439 / 1051:22288 / 62系 / 1063:26512 / z7Uqファイル等を根拠にするな（関所で停止・申告）。
+2. **第2段 コンテンツ照合**: その node の内容に当該機能が実在するか。
+   - ★Figma REST/MCP で node-content を実取得し、frame名・表示項目・UI が実装機能と一致することを目視確認★。
+   - ★backlog/triage doc/PDF/過去報告 単体を実装根拠にするな★——必ずFigma現行nodeの実取得で裏取りせよ。
+   - develop実コードで「現存実装」も確認（既実装の重複/誤実装を防ぐ。例: F-S3/F-QRは既実装だった）。
+
+完了報告には `figma_node_verification`（stage1/stage2 各true・evidence_log）を必須記載。
+いずれか false の実装は F005相当（事実検証スキップ）違反。
 
 ### Self-check (実装前・必須)
 

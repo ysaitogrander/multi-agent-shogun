@@ -240,6 +240,16 @@ System manages ALL white-collar work, not just self-improvement. Project folders
 | C | report テンプレに purpose_gap 必須化 | Ashigaru → Gunshi → Karo | 下記参照 |
 | D | サブエージェント種別整合性チェック | Ashigaru | `instructions/roles/ashigaru_role.md` → TVF 節 |
 
+## Figma 正典マップ（canonical-map）
+
+Figma ファイル・ノードの権威情報は `context/figma-canonical-map.md` に集約する。
+実装着手前・チケット起票時は必ずこのマップを参照し、正典ファイルキーと代表ノードを確認すること。
+固定値を指示文や instructions に直書きせず、常に本マップを参照経由とすること（系統別可変のため）。
+
+- **管理画面系チケット起票時必須**: 対応 Figma ノード ID と URL を本マップを引いて明記。不明な場合は「要特定」と記載（捏造禁止）。
+- **廃止画面**: ユーザー詳細画面（standalone `/users/{id}`）は存在しない（Backlog: USER-10）。実装禁止。
+- **タブレット系**: 2026-06-03 裁定により旧ファイルから `xDQ4U6O2LUfIrftJGzacqm` へ切替済。旧ファイルは参照外。
+
 ## C: purpose_gap 必須フィールド
 
 完了報告 YAML には次のフィールドを必須記載する（Figma準拠以外のタスクも対象）。
